@@ -172,6 +172,8 @@ log("Filling water...")
 local waterH = SEA_LEVEL - FLOOR_Y
 local waterCenterY = (SEA_LEVEL + FLOOR_Y) / 2
 T:FillBlock(CF(V3(OFFSET_X, waterCenterY, OFFSET_Z)), V3(OCEAN_SIZE, waterH, OCEAN_SIZE), M.Water)
+T.WaterWaveSize = 0.15
+T.WaterWaveSpeed = 15
 task.wait(0.1)
 
 -- ══════════════════════════════════════════════════════════════════

@@ -73,20 +73,37 @@ local function gcap(x, z, r)
 	T:FillCylinder(CF(V3(x, SURF + 1, z)), 8, r, M.Grass)
 end
 
+-- Hill acak: radius per step dikasih jitter + wobble posisi horizontal,
+-- biar siluetnya nggak jadi kerucut sempurna. Ditutup batu-batu nyebar
+-- di lereng biar ada tekstur, bukan polos rata.
 local function hill(cx, cz, baseR, peakH, mat, steps)
 	cx += OFFSET_X
 	cz += OFFSET_Z
 	steps = steps or 16
 	for i = 0, steps - 1 do
 		local t = i / (steps - 1)
-		local r = math.floor(baseR * (1 - t) ^ 0.7)
+		local jitter = 0.85 + math.random() * 0.3
+		local r = math.floor(baseR * (1 - t) ^ 0.7 * jitter)
 		if r < 3 then
 			r = 3
 		end
+		local wobble = baseR * 0.15 * (1 - t)
+		local wx = cx + (math.random() - 0.5) * wobble
+		local wz = cz + (math.random() - 0.5) * wobble
 		local yBot = SURF + t * peakH
 		local segH = (peakH / steps) + 2
 		local yCtr = yBot + segH / 2
-		T:FillCylinder(CF(V3(cx, yCtr, cz)), segH, r, mat)
+		T:FillCylinder(CF(V3(wx, yCtr, wz)), segH, r, mat)
+	end
+
+	for _ = 1, 8 do
+		local t = math.random()
+		local angle = math.random() * math.pi * 2
+		local rAtT = baseR * (1 - t) ^ 0.7 * (math.random(60, 95) / 100)
+		local rx = cx + math.cos(angle) * rAtT
+		local rz = cz + math.sin(angle) * rAtT
+		local ry = SURF + t * peakH
+		T:FillBall(V3(rx, ry, rz), math.random(3, 7), M.Rock)
 	end
 end
 

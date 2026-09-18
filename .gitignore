@@ -3,3 +3,10 @@
 *.rbxlx.lock
 sourcemap.json
 .vscode/
+
+# secrets - jangan sampe ke-commit
+.env
+.env.*
+*.pem
+*.key
+credentials.json

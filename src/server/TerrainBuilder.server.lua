@@ -7,6 +7,10 @@
 --      guard ini cuma buat nyegah kebuang waktu re-run pas testing berulang.
 --   4. Cuma jalan otomatis di Studio. Kalau lu publish, ini nggak akan re-run
 --      di server production (soalnya harusnya udah ke-save di place file).
+--   5. OFFSET_X/OFFSET_Z/SEA_LEVEL disesuaikan ke posisi SpawnLocation yang
+--      udah ada (-157, 161, -38), bukan lagi di titik (0,0,0). Semua koordinat
+--      di bawah ini tetep ditulis RELATIF (misal lobe di 0,0), offset-nya
+--      ditambahin otomatis di dalem helper function.
 
 local RunService = game:GetService("RunService")
 
@@ -29,12 +33,14 @@ end
 
 -- ── CONSTANTS ──────────────────────────────────────────────────────
 local OCEAN_SIZE = 1200 -- total width/length area air (studs)
-local SEA_LEVEL = 0 -- Y permukaan air
-local FLOOR_Y = -130 -- Y dasar laut
+local OFFSET_X = -157 -- geser pusat pulau ke deket SpawnLocation
+local OFFSET_Z = -38
+local SEA_LEVEL = 161 -- Y permukaan air, disamain sama Y SpawnLocation
+local FLOOR_Y = SEA_LEVEL - 130 -- Y dasar laut
 local FLOOR_THICK = 30 -- tebal lapisan rock dasar
-local SURF = 10 -- Y permukaan pulau
+local SURF = SEA_LEVEL + 10 -- Y permukaan pulau
 
--- ── HAPUS BASEPLATE DEFAULT ────────────────────────────────────────
+-- ── HAPUS BASEPLATE DEFAULT (kalau masih ada) ───────────────────────
 local baseplate = workspace:FindFirstChild("Baseplate")
 if baseplate and baseplate:IsA("BasePart") then
 	log("Menghapus Baseplate default...")
@@ -46,22 +52,30 @@ log("Clearing existing terrain...")
 T:Clear()
 task.wait(0.3)
 
--- ── HELPERS ──────────────────────────────────────────────────────
+-- ── HELPERS (x/z di sini RELATIF ke OFFSET_X/OFFSET_Z) ──────────────
 local function col(x, z, r, mat, topY)
+	x += OFFSET_X
+	z += OFFSET_Z
 	topY = topY or SURF
 	local h = topY - FLOOR_Y
 	T:FillCylinder(CF(V3(x, (topY + FLOOR_Y) / 2, z)), h, r, mat)
 end
 
 local function slab(x, y, z, sx, sy, sz, mat)
+	x += OFFSET_X
+	z += OFFSET_Z
 	T:FillBlock(CF(V3(x, y, z)), V3(sx, sy, sz), mat)
 end
 
 local function gcap(x, z, r)
+	x += OFFSET_X
+	z += OFFSET_Z
 	T:FillCylinder(CF(V3(x, SURF + 1, z)), 8, r, M.Grass)
 end
 
 local function hill(cx, cz, baseR, peakH, mat, steps)
+	cx += OFFSET_X
+	cz += OFFSET_Z
 	steps = steps or 16
 	for i = 0, steps - 1 do
 		local t = i / (steps - 1)
@@ -79,13 +93,13 @@ end
 -- ── OCEAN FLOOR + WATER ─────────────────────────────────────────────
 log("Filling ocean floor (rock)...")
 local floorCenterY = FLOOR_Y - (FLOOR_THICK / 2)
-T:FillBlock(CF(V3(0, floorCenterY, 0)), V3(OCEAN_SIZE, FLOOR_THICK, OCEAN_SIZE), M.Rock)
+T:FillBlock(CF(V3(OFFSET_X, floorCenterY, OFFSET_Z)), V3(OCEAN_SIZE, FLOOR_THICK, OCEAN_SIZE), M.Rock)
 task.wait(0.1)
 
 log("Filling water...")
 local waterH = SEA_LEVEL - FLOOR_Y
 local waterCenterY = (SEA_LEVEL + FLOOR_Y) / 2
-T:FillBlock(CF(V3(0, waterCenterY, 0)), V3(OCEAN_SIZE, waterH, OCEAN_SIZE), M.Water)
+T:FillBlock(CF(V3(OFFSET_X, waterCenterY, OFFSET_Z)), V3(OCEAN_SIZE, waterH, OCEAN_SIZE), M.Water)
 task.wait(0.1)
 
 -- ── ISLAND SAND BASE ────────────────────────────────────────────────
@@ -119,14 +133,14 @@ task.wait(0.1)
 
 -- ── FLATTEN ZONA PENTING ────────────────────────────────────────────
 log("Flattening key zones...")
-slab(0, 12, 20, 100, 7, 84, M.Grass) -- spawn plaza
-slab(40, 12, 20, 55, 7, 55, M.Grass) -- shop area
+slab(0, SURF + 2, 20, 100, 7, 84, M.Grass) -- spawn plaza
+slab(40, SURF + 2, 20, 55, 7, 55, M.Grass) -- shop area
 task.wait(0.1)
 
 -- ── UPGRADE HILL ─────────────────────────────────────────────────────
 log("Building hill...")
 hill(-10, -48, 32, 40, M.Grass)
-T:FillBall(V3(-10, 46, -48), 8, M.Rock)
+T:FillBall(V3(-10 + OFFSET_X, SURF + 36, -48 + OFFSET_Z), 8, M.Rock)
 task.wait(0.1)
 
 -- ── MARKERS (referensi lokasi, hapus manual kalau udah nggak butuh) ──
@@ -136,16 +150,16 @@ folder.Name = "_BF_Markers_HAPUS_SETELAH_BUILD"
 folder.Parent = workspace
 
 local mk = {
-	{ "1", "SPAWN AREA", 0, 22, 20, 255, 255, 0 },
-	{ "2", "SHOP / NPC", 40, 22, 20, 255, 165, 0 },
-	{ "3", "UPGRADE HILL", -10, 56, -48, 170, 0, 255 },
+	{ "1", "SPAWN AREA", 0, SURF + 12, 20, 255, 255, 0 },
+	{ "2", "SHOP / NPC", 40, SURF + 12, 20, 255, 165, 0 },
+	{ "3", "UPGRADE HILL", -10, SURF + 46, -48, 170, 0, 255 },
 }
 
 for _, m in ipairs(mk) do
 	local p = Instance.new("Part")
 	p.Name = "[" .. m[1] .. "] " .. m[2]
 	p.Size = V3(4, 4, 4)
-	p.Position = V3(m[3], m[4], m[5])
+	p.Position = V3(m[3] + OFFSET_X, m[4], m[5] + OFFSET_Z)
 	p.Anchored = true
 	p.CanCollide = false
 	p.Color = Color3.fromRGB(m[6], m[7], m[8])

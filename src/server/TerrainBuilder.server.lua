@@ -290,5 +290,11 @@ for _, m in ipairs(mk) do
 	tl.Text = "[" .. m[1] .. "] " .. m[2]
 end
 
+-- Nyimpen info posisi/level sebagai attribute biar script lain (dermaga,
+-- obby, dll) bisa baca otomatis, bukan hardcode ulang angka yang sama.
+workspace:SetAttribute("BF_OffsetX", OFFSET_X)
+workspace:SetAttribute("BF_OffsetZ", OFFSET_Z)
+workspace:SetAttribute("BF_SeaLevel", SEA_LEVEL)
+workspace:SetAttribute("BF_Surf", SURF)
 workspace:SetAttribute("BF_TerrainBuilt", true)
 log("Terrain selesai. Kalau udah oke, File > Save Studio biar kesimpen.")

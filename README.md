@@ -20,7 +20,8 @@ src/server/              -> masuk ke ServerScriptService
   RodSetup.server.lua       -> bikin Tool "FishingRod" masuk StarterPack
   FishingService.server.lua -> logika cast -> roll ikan -> kasih coins
 src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
-  FishingController.client.lua -> deteksi klik joran, print hasil tangkapan
+  FishingController.client.lua -> deteksi klik joran, tampilin hasil tangkapan
+  CatchPopup.lua               -> card popup hasil tangkapan, warna per rarity
 ```
 
 ## Setup sekali di awal

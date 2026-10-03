@@ -9,6 +9,8 @@ manual ke Command Bar tiap kali ada perubahan.
 ```
 default.project.json   -> config Rojo, nentuin file mana masuk ke mana di Studio
 rokit.toml              -> pin versi Rojo (rokit = toolchain manager resmi Rojo)
+src/first/               -> masuk ke ReplicatedFirst (jalan paling awal di client)
+  LoadingScreen.client.lua -> loading screen custom, fade out pas character spawn
 src/shared/              -> masuk ke ReplicatedStorage (dipake server & client)
   Remotes.lua             -> bikin/ambil RemoteEvent (CastRod, CatchResult)
   FishData.lua             -> daftar ikan + rarity + value

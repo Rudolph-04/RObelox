@@ -43,8 +43,13 @@ sama jingle "digoreng dadakan". Jingle sendiri nanti dibikin.
 
 **Step 1 selesai: lokasi Pasar + mekanik goreng.**
 
-- Area "Pasar" graybox: gerobak tahu (meja, kompor, wajan, etalase, atap
-  belang), 2 lapak tetangga, spawn di sisi tukang goreng.
+- Map kota graybox (map mancing lama udah disapu bersih): jalan raya +
+  trotoar + lampu jalan, deretan ruko, rumah, pohon, batas kota.
+  - **Pasar** (bisa dimainin): gapura, gerobak tahu (meja, kompor, wajan,
+    etalase, atap belang), 6 lapak tetangga, spawn di sisi tukang goreng.
+  - **Depan Sekolah, Terminal, Alun-alun**: plot cabang yang masih
+    terkunci (gerbang/palang ditutup + papan "Segera dibuka"), disiapin
+    buat Step 4 (Buka Cabang).
 - Goreng: deketin wajan, tekan **E** (ProximityPrompt) → bar kematangan
   jalan 8 detik: Mentah → Oke → **Perfect** → Oke → Gosong. Tekan **E** /
   klik **ANGKAT!** buat ngangkat. Kalau dibiarin, otomatis keangkat gosong.
@@ -85,14 +90,15 @@ src/server/              -> masuk ke ServerScriptService
 src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
   FryController.client.lua -> UI bar kematangan, tombol angkat, feedback hasil
 tools/                    -> BUKAN bagian game, script bantu buat Studio
-  BuildPasar.luau          -> bangun area Pasar + gerobak + wajan (sekali jalan)
+  BuildKota.luau           -> bangun map kota + Pasar + plot cabang (sekali jalan)
 ```
 
 ### Soal map (Workspace)
 
-Rojo cuma nge-sync script, bukan part/map. Map Pasar dibangun pake
-`tools/BuildPasar.luau`: jalanin sekali di Command Bar Studio (mode Edit),
-terus **Save place** (Ctrl+S). Gameplay nyari wajan lewat tag
+Rojo cuma nge-sync script, bukan part/map. Map dibangun pake
+`tools/BuildKota.luau`: jalanin sekali di Command Bar Studio (mode Edit) di
+place yang Workspace-nya kosong, terus **Save place** (Ctrl+S). Hasilnya
+`Workspace.Kota` + tanah terrain rumput. Gameplay nyari wajan lewat tag
 CollectionService `"Wajan"`, jadi gerobak/dekorasi bebas digeser/diubah
 manual di Studio tanpa ngerusak script.
 

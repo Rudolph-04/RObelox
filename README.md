@@ -22,6 +22,7 @@ src/server/              -> masuk ke ServerScriptService
 src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
   FishingController.client.lua -> deteksi klik joran, tampilin hasil tangkapan
   CatchPopup.lua               -> card popup hasil tangkapan, warna per rarity
+  CoinsHUD.client.lua          -> HUD coins kanan atas (di baris topbar), animasi tiap nambah
 ```
 
 ## Setup sekali di awal
@@ -61,13 +62,13 @@ src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
 - Alur cast -> tunggu -> dapet ikan acak (weighted) -> coins masuk
   leaderstats, semua logic di server (aman dari exploit client-side).
 - Tool "FishingRod" otomatis ada di Backpack tiap player spawn.
+- UI: loading screen custom, popup card hasil tangkapan (warna per rarity,
+  replace bukan numpuk), HUD coins yang update real-time + animasi.
 
 ## Yang BELUM ada (next steps, jujur biar jelas)
 
 - **DataStore** — coins reset tiap player leave/rejoin. Ini prioritas
   paling penting sebelum publish ke publik.
-- **UI beneran** — catch result masih cuma `print()` ke Output, belum ada
-  popup/animasi di layar.
 - **Shop / upgrade** — marker lokasi udah ada di map, tapi belum ada NPC
   atau GUI buat beli upgrade rod.
 - **Anti-exploit tambahan** — rate limit `CastRod` masih basic (cuma cek

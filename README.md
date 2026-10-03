@@ -41,9 +41,20 @@ sama jingle "digoreng dadakan". Jingle sendiri nanti dibikin.
 
 ## Status sekarang
 
-**Belum ada yang dibangun.** Ini restart total, baru tahap dokumentasiin
-desain + siapin ulang skeleton Rojo-nya. Belum ada script gameplay sama
-sekali di `src/`.
+**Step 1 selesai: lokasi Pasar + mekanik goreng.**
+
+- Area "Pasar" graybox: gerobak tahu (meja, kompor, wajan, etalase, atap
+  belang), 2 lapak tetangga, spawn di sisi tukang goreng.
+- Goreng: deketin wajan, tekan **E** (ProximityPrompt) → bar kematangan
+  jalan 8 detik: Mentah → Oke → **Perfect** → Oke → Gosong. Tekan **E** /
+  klik **ANGKAT!** buat ngangkat. Kalau dibiarin, otomatis keangkat gosong.
+- Hasil selalu laku (nggak ada gagal total), reward sementara ke
+  `leaderstats.Uang`: Mentah Rp 1.000, Oke Rp 2.000, Perfect Rp 2.000 + tip
+  Rp 1.000, Gosong Rp 500.
+- Server-authoritative: waktu mulai dicatat server, kualitas dihitung
+  server. Client cuma ngirim "angkat" + jam klik, yang cuma diterima kalau
+  mundurnya ≤ 0.3 detik (kompensasi lag, bukan celah curang).
+- Belum ada: pembeli/antrean, shift, rebirth, lokasi lain, DataStore.
 
 ## Rencana urutan build (biar nggak kewalahan)
 
@@ -66,10 +77,24 @@ digarap sekaligus gampang keteteran. Urutan yang disaranin:
 default.project.json   -> config Rojo, nentuin file mana masuk ke mana di Studio
 rokit.toml              -> pin versi Rojo (rokit = toolchain manager resmi Rojo)
 src/shared/              -> masuk ke ReplicatedStorage (dipake server & client)
+  Remotes.lua              -> RemoteEvent FryStarted / LiftTahu / FryResult
+  FryConfig.lua            -> durasi goreng, batas zona, reward, warna tahu
 src/server/              -> masuk ke ServerScriptService
+  Leaderstats.server.lua   -> "Uang" per player (BELUM ada DataStore)
+  FryService.server.lua    -> logika goreng (server yang nentuin hasil)
 src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
+  FryController.client.lua -> UI bar kematangan, tombol angkat, feedback hasil
+tools/                    -> BUKAN bagian game, script bantu buat Studio
+  BuildPasar.luau          -> bangun area Pasar + gerobak + wajan (sekali jalan)
 ```
-(Masih kosong, diisi bertahap sesuai urutan build di atas.)
+
+### Soal map (Workspace)
+
+Rojo cuma nge-sync script, bukan part/map. Map Pasar dibangun pake
+`tools/BuildPasar.luau`: jalanin sekali di Command Bar Studio (mode Edit),
+terus **Save place** (Ctrl+S). Gameplay nyari wajan lewat tag
+CollectionService `"Wajan"`, jadi gerobak/dekorasi bebas digeser/diubah
+manual di Studio tanpa ngerusak script.
 
 ## Setup sekali di awal
 

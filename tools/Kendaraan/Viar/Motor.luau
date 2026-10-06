@@ -69,11 +69,10 @@ local function tangki(motor)
 end
 
 local function jok(viar, motor)
-	-- Bodi di bawah jok + tutup samping bertulisan TAHU JURAGAN.
+	-- Bodi di bawah jok + tutup samping.
 	box(motor, "BodiJok", V3(1.0, 0.45, 1.5), L(0, 2.425, -2.55), D.BODY, M.SmoothPlastic)
 	for _, sx in ipairs({ -1, 1 }) do
-		local panel = box(motor, "TutupSamping", V3(0.08, 0.6, 1.2), L(sx * 0.54, 2.35, -2.55), D.BODY_DARK, M.SmoothPlastic)
-		Bantu.surfaceText(panel, sx < 0 and Enum.NormalId.Left or Enum.NormalId.Right, "TAHU JURAGAN", W.PUTIH, nil, 60)
+		box(motor, "TutupSamping", V3(0.08, 0.6, 1.2), L(sx * 0.54, 2.35, -2.55), D.BODY_DARK, M.SmoothPlastic)
 	end
 
 	-- Pijakan kaki: batang nembus depan mesin, karet di ujungnya.

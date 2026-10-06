@@ -75,7 +75,7 @@ return function()
 		TabrakKanan = V3(D.TRACK, D.WHEEL_R, D.AS_BELAKANG),
 	}
 	for name, pos in pairs(wheels) do
-		Bantu.ball(viar, name, D.WHEEL_R * 2, L(pos.X, pos.Y, pos.Z), W.RANGKA):SetAttribute("Tabrakan", true)
+		Bantu.ball(viar, name, D.WHEEL_R * 2, L(pos.X, pos.Y, pos.Z), W.RANGKA):SetAttribute("Tabrakan", "Roda") -- tanpa gesekan (lihat Rig)
 	end
 
 	-- ── BAGIAN-BAGIAN ───────────────────────────────────────────────

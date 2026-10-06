@@ -2,8 +2,10 @@
 	Rig — langkah terakhir semua builder kendaraan: bikin model yang tadinya
 	cuma tumpukan part anchored jadi kendaraan yang bisa jalan.
 
-	  - Part ber-atribut "Tabrakan" = collider: nggak keliatan, punya massa,
-	    tanpa gesekan (gerak diatur constraint, bukan gesekan roda).
+	  - Part ber-atribut "Tabrakan" = collider: nggak keliatan, punya massa.
+	    Tabrakan = "Roda" (yang nyentuh tanah): tanpa gesekan, gerak diatur
+	    constraint, bukan gesekan roda. Collider lain (lantai box dll):
+	    gesekan normal, biar orang yang berdiri di situ nggak kepeleset.
 	    Sisanya visual: nggak nabrak, nggak punya massa.
 	  - Fisika di PrimaryPart (Chassis), diatur KendaraanController:
 	      Gerak = LinearVelocity mode Plane (sumbu X/Z dunia) -> maju/mundur,
@@ -46,6 +48,7 @@ return function(kendaraan, opsi)
 	assert(chassis, "Kendaraan butuh PrimaryPart (Chassis)")
 
 	local noFriction = PhysicalProperties.new(0.7, 0, 0.2, 100, 1)
+	local floor = PhysicalProperties.new(0.7, 0.8, 0.1, 1, 1)
 	for _, p in ipairs(kendaraan:GetDescendants()) do
 		if p:IsA("BasePart") then
 			p.CanTouch = false
@@ -54,7 +57,7 @@ return function(kendaraan, opsi)
 				p.CanCollide = true
 				p.CanQuery = false
 				p.Massless = false
-				p.CustomPhysicalProperties = noFriction
+				p.CustomPhysicalProperties = p:GetAttribute("Tabrakan") == "Roda" and noFriction or floor
 			else
 				p.CanCollide = false
 				p.Massless = true

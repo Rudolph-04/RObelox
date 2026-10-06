@@ -12,8 +12,14 @@ manual ke Command Bar tiap ada perubahan).
 ## Kenapa beda dari game "tahu bulat" yang udah ada
 
 Sengaja dijauhin dari ciri khas genre yang udah terkenal: mekanik
-tap-untuk-jualan, konsep keliling naik mobil pickup, susunan upgrade mereka,
-sama jingle "digoreng dadakan". Jingle sendiri nanti dibikin.
+tap-untuk-jualan, konsep keliling jualan di mana aja naik mobil pickup,
+susunan upgrade mereka, sama jingle "digoreng dadakan". Jingle sendiri nanti
+dibikin.
+
+Kendaraan dagangan (Viar dulu, nanti nambah lewat upgrade) emang bisa
+dikendarai, tapi **cuma bisa goreng kalau diparkir di titik jualan** sebuah
+lokasi (Pasar sekarang, nanti cabang-cabang lain). Jadi pembedanya tetep
+konsep lokasi/cabang, bukan keliling.
 
 ## Konsep inti
 
@@ -41,12 +47,34 @@ sama jingle "digoreng dadakan". Jingle sendiri nanti dibikin.
 
 ## Status sekarang
 
-**Step 1 selesai: lokasi Pasar + mekanik goreng.**
+**Step 1 selesai: lokasi Pasar + mekanik goreng + kendaraan dagangan (gerobak motor).**
 
 - Map kota graybox (map mancing lama udah disapu bersih): jalan raya +
   trotoar + lampu jalan, deretan ruko, rumah, pohon, batas kota.
-  - **Pasar** (bisa dimainin): gapura, gerobak tahu (meja, kompor, wajan,
-    etalase, atap belang), 6 lapak tetangga, spawn di sisi tukang goreng.
+  - **Pasar** (bisa dimainin): gapura, **TITIK JUALAN** (6 petak parkir
+    kendaraan), 6 lapak tetangga, spawn deket titik jualan.
+- **Kendaraan dagangan**: tombol **KENDARAAN** di kiri layar → pilih →
+  **Keluarin** (muncul di petak parkir kosong terdeket; keluarin lagi =
+  diganti baru, sekalian buat yang nyangkut). Sekarang baru **Gerobak
+  Motor**: motor roda tiga + box jualan "TAHU JURAGAN" di belakang (tanpa
+  logo/merek asli; id internalnya masih `Viar`).
+  - Motor depan: tangki bensin, jok, stang + 2 spion, lampu bulat, shock
+    depan keliatan, pijakan kaki. Tangan avatar megang stang (IKControl).
+  - Box: rangka aluminium, atap kabin melengkung di atas pengendara, papan
+    nama di atas, pintu belakang, sepatbor + karet lumpur, lampu + plat.
+  - **Panel samping kiri** ketutup pas nyetir, kebuka ke atas jadi kanopi
+    (TweenService, disangga 2 piston) pas diparkir di TITIK JUALAN.
+  - Dalem box: counter + **kompor tanam** (wajan nancep di meja), etalase
+    kaca, tirisan, baskom tahu mentah, stok, tabung gas, lampu TL.
+  - Naik: **F** di jok. Nyetir: W/S gas/mundur, A/D belok, Spasi turun
+    (HP: stik + tombol lompat). Selalu tegak, nggak bisa kebalik.
+  - Goreng cuma bisa kalau kendaraan diem di TITIK JUALAN dan nggak ada yang
+    nyetir. Boleh sambil **berdiri** di depan counter atau **duduk** di kursi
+    penjual di dalem box (**G**). Selama goreng kendaraan dikunci.
+  - Prompt cuma muncul pas relevan: F (jarak 6) mati selama nyetir/goreng/
+    duduk jualan; G (jarak 5, harus keliatan langsung) & E (jarak 5) cuma
+    nyala pas lapak buka.
+  - Cuma pemiliknya yang bisa naik/duduk/goreng di kendaraannya.
   - **Depan Sekolah, Terminal, Alun-alun**: plot cabang yang masih
     terkunci (gerbang/palang ditutup + papan "Segera dibuka"), disiapin
     buat Step 4 (Buka Cabang).
@@ -82,24 +110,49 @@ digarap sekaligus gampang keteteran. Urutan yang disaranin:
 default.project.json   -> config Rojo, nentuin file mana masuk ke mana di Studio
 rokit.toml              -> pin versi Rojo (rokit = toolchain manager resmi Rojo)
 src/shared/              -> masuk ke ReplicatedStorage (dipake server & client)
-  Remotes.lua              -> RemoteEvent FryStarted / LiftTahu / FryResult
+  Remotes.lua              -> RemoteEvent goreng + SpawnKendaraan / InfoKendaraan
   FryConfig.lua            -> durasi goreng, batas zona, reward, warna tahu
+  KendaraanConfig.lua      -> daftar kendaraan dagangan + angka nyetirnya
 src/server/              -> masuk ke ServerScriptService
   Leaderstats.server.lua   -> "Uang" per player (BELUM ada DataStore)
   FryService.server.lua    -> logika goreng (server yang nentuin hasil)
+  KendaraanService.server.lua -> spawn kendaraan, siapa boleh naik, boleh jualan di mana
 src/client/               -> masuk ke StarterPlayer.StarterPlayerScripts
   FryController.client.lua -> UI bar kematangan, tombol angkat, feedback hasil
-tools/                    -> BUKAN bagian game, script bantu buat Studio
+  KendaraanController.client.lua -> nyetir, animasi roda/setir/tangan/panel, petunjuk di layar
+  KendaraanMenu.client.lua -> tombol KENDARAAN + menu keluarin kendaraan
+tools/                    -> masuk ke ServerStorage.Tools; BUKAN script game,
+                             builder buat Studio (jalan di mode Edit)
+  Jalankan.luau            -> runner: require(game.ServerStorage.Tools.Jalankan)("Kendaraan/Viar")
+  Bantu.luau               -> helper bareng (part, silinder, pipa, CSG, tulisan)
+  CekTumpuk.luau           -> cari permukaan numpuk (z-fighting / kedip-kedip)
   BuildKota.luau           -> bangun map kota + Pasar + plot cabang (sekali jalan)
+  Kendaraan/
+    Viar/                  -> gerobak motor -> ServerStorage.Kendaraan.Viar
+      init.luau              -> rakit semua bagian + collider
+      Dasar.luau             -> ukuran bareng + helper
+      Motor.luau, Bak.luau, Box.luau, Lapak.luau -> per bagian
+    Wajan.luau, Roda.luau  -> bagian yang dipake ulang semua kendaraan
+    Rig.luau               -> jadiin model kendaraan bisa jalan (fisika, sambungan)
 ```
 
-### Soal map (Workspace)
+### Soal map & template (Workspace / ServerStorage)
 
-Rojo cuma nge-sync script, bukan part/map. Map dibangun pake
-`tools/BuildKota.luau`: jalanin sekali di Command Bar Studio (mode Edit) di
-place yang Workspace-nya kosong, terus **Save place** (Ctrl+S). Hasilnya
-`Workspace.Kota` + tanah terrain rumput. Gameplay nyari wajan lewat tag
-CollectionService `"Wajan"`, jadi gerobak/dekorasi bebas digeser/diubah
+Rojo cuma nge-sync script, bukan part/map. Map & template kendaraan dibangun
+pake builder di `tools/`, dijalanin dari Command Bar Studio (mode Edit), terus
+**Save place** (Ctrl+S):
+
+- Map kota: `tools/BuildKota.luau` di place yang Workspace-nya kosong →
+  `Workspace.Kota` + terrain. Catatan: permukaan smooth terrain jadinya ~2
+  stud di atas batas isian, makanya terrain diisi sampe y = -2.
+- Kendaraan: `require(game.ServerStorage.Tools.Jalankan)("Kendaraan/Viar")`
+  → `ServerStorage.Kendaraan.Viar`. Kendaraan baru = builder baru di
+  `tools/Kendaraan/` (pake Wajan/Roda/Rig) + entri di `KendaraanConfig`.
+  Abis ngubah model, cek kedip-kedip:
+  `print(require(game.ServerStorage.Tools.CekTumpuk)(game.ServerStorage.Kendaraan.Viar))`.
+
+Gameplay nyari semuanya lewat tag CollectionService (`"Wajan"`,
+`"TitikJualan"`, `"ParkirKendaraan"`), jadi dekorasi bebas digeser/diubah
 manual di Studio tanpa ngerusak script.
 
 ## Setup sekali di awal

@@ -14,11 +14,10 @@
 	   [ DEPAN SEKOLAH ]  [ PASAR ]  [ TERMINAL ]
 	   (terkunci)         (main)     (terkunci)
 
-	Yang dipake gameplay cuma model wajan di Pasar:
-	  - tag CollectionService "Wajan"
-	  - child Part "Minyak" (ada ParticleEmitter "Asap")
-	  - ProximityPrompt di dalamnya
-	Sisanya dekorasi, bebas diubah.
+	Yang dipake gameplay (sisanya dekorasi, bebas diubah):
+	  - part bertag "TitikJualan": area tempat kendaraan boleh jualan
+	  - part bertag "ParkirKendaraan": tempat kendaraan player muncul
+	Wajan sekarang nempel di kendaraan (tools/Kendaraan/), bukan di map.
 
 	Kalau Workspace.Kota udah ada, script ini nggak ngapa-ngapain
 	(hapus dulu manual kalau mau bangun ulang).
@@ -58,6 +57,10 @@ local SIDEWALK = RGB(185, 180, 170)
 local LEAF = { RGB(62, 120, 52), RGB(76, 135, 58), RGB(50, 105, 48) }
 
 -- ── HELPER ─────────────────────────────────────────────────────────
+-- Props buat cat di lantai/jalan (marka, garis parkir): cuma tampilan, jangan
+-- sampe bikin kendaraan nyangkut.
+local CAT = { CanCollide = false, CanQuery = false }
+
 local function box(parent, name, size, at, color, material, props)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -181,15 +184,39 @@ kota.Name = "Kota"
 local ground = folder(kota, "Jalan")
 
 -- Tanah pakai terrain rumput (lebih natural dari part datar).
+-- Permukaan smooth terrain jadinya ~2 stud DI ATAS batas isian (voxel 4 stud),
+-- jadi diisi sampe y = -2 biar permukaannya pas di y ≈ 0, sejajar bawah jalan
+-- & lantai. (Dulu diisi sampe 0 -> seluruh kota kekubur 2 stud tanah.)
 workspace.Terrain:FillBlock(
-	CFrame.new(0, -4, (MIN_Z + MAX_Z) / 2),
-	V3(HALF_X * 2 + 80, 8, (MAX_Z - MIN_Z) + 80),
+	CFrame.new(0, -5, (MIN_Z + MAX_Z) / 2),
+	V3(HALF_X * 2 + 80, 6, (MAX_Z - MIN_Z) + 80),
 	M.Grass
 )
 
+-- Di bawah semua yang diaspal/dibangun, terrain diganti tanah. Rumput terrain
+-- tumbuh nembus part tipis (lantai pasar, jalan), dan tinggi rumputnya nggak
+-- bisa diatur dari script, jadi rumput cuma dibiarin di lahan kosong.
+local function pave(x1, x2, z1, z2)
+	local region = Region3.new(V3(math.min(x1, x2), -8, math.min(z1, z2)), V3(math.max(x1, x2), 4, math.max(z1, z2)))
+	workspace.Terrain:ReplaceMaterial(region:ExpandToGrid(4), 4, M.Grass, M.Ground)
+end
+pave(-HALF_X - 2, HALF_X + 2, -(ROAD_HALF + WALK + 1), ROAD_HALF + WALK + 1) -- jalan raya + trotoar
+pave(PASAR.X - 39, PASAR.X + 39, PASAR.Z - 31, -(ROAD_HALF + WALK))
+pave(-7, 7, ROAD_HALF + WALK, ALUN.Z - 45) -- jalan ke alun-alun
+pave(SEKOLAH.X - 43, SEKOLAH.X + 43, SEKOLAH.Z - 33, SEKOLAH.Z + 33)
+pave(TERMINAL.X - 47, TERMINAL.X + 47, TERMINAL.Z - 33, TERMINAL.Z + 33)
+pave(ALUN.X - 47, ALUN.X + 47, ALUN.Z - 47, ALUN.Z + 47)
+for _, side in ipairs({ -1, 1 }) do
+	pave(side * 53, side * 236, ROAD_HALF + WALK - 2, ROAD_HALF + WALK + 17) -- deretan ruko
+end
+for _, x in ipairs({ -95, -75, -55, 55, 75, 95, -224, 224 }) do -- rumah (lihat bagian RUMAH)
+	pave(x - 7, x + 7, -47, -33)
+	pave(x - 7, x + 7, -73, -59)
+end
+
 box(ground, "JalanRaya", V3(HALF_X * 2, 0.3, ROAD_HALF * 2), V3(0, 0.15, 0), ASPHALT, M.Asphalt)
 for x = -HALF_X + 10, HALF_X - 10, 16 do
-	box(ground, "Marka", V3(8, 0.05, 0.6), V3(x, 0.32, 0), RGB(240, 240, 235), M.SmoothPlastic)
+	box(ground, "Marka", V3(8, 0.05, 0.6), V3(x, 0.32, 0), RGB(240, 240, 235), M.SmoothPlastic, CAT)
 end
 for _, side in ipairs({ -1, 1 }) do
 	box(ground, "Trotoar", V3(HALF_X * 2, 0.6, WALK), V3(0, 0.3, side * (ROAD_HALF + WALK / 2)), SIDEWALK, M.Concrete)
@@ -230,93 +257,36 @@ local function buildPasar(origin)
 	signText(gapura, Enum.NormalId.Back, "PASAR", CREAM, RGB(150, 40, 30))
 	signText(gapura, Enum.NormalId.Front, "PASAR", CREAM, RGB(150, 40, 30))
 
-	-- Gerobak tahu (pembeli di sisi +Z, tukang goreng di sisi -Z).
-	local gerobak = folder(pasar, "Gerobak")
-	box(gerobak, "Badan", V3(9, 2.4, 3.6), at(0, FLOOR + 2.3, 0), WOOD_DARK, M.Wood)
-	local meja = box(gerobak, "Meja", V3(9.6, 0.4, 4.2), at(0, FLOOR + 3.5, 0), WOOD, M.WoodPlanks)
-	local mejaTop = meja.Position.Y - origin.Y + meja.Size.Y / 2
-
-	for _, x in ipairs({ -4.75, 4.75 }) do
-		wheel(gerobak, "Roda", 0.4, 2.2, at(x, FLOOR + 1.1, 0.4), RGB(40, 40, 42), M.Rubber)
-		wheel(gerobak, "As", 0.5, 0.6, at(x, FLOOR + 1.1, 0.4), RGB(150, 150, 155), M.Metal)
+	-- TITIK JUALAN: 6 petak parkir kendaraan dagangan. Cuma bisa goreng kalau
+	-- kendaraannya diparkir di dalem part bertag "TitikJualan" (dicek KendaraanService).
+	-- Part bertag "ParkirKendaraan" = tempat kendaraan muncul (ngadep -Z,
+	-- moncong ke dalem pasar, bak + wajan ngadep pintu masuk).
+	local BAY_W, BAY_Z1, BAY_Z2 = 6.4, 7, 21
+	local bayCount = 6
+	local bayLeft = -BAY_W * bayCount / 2
+	for i = 0, bayCount do
+		box(pasar, "GarisParkir", V3(0.2, 0.04, BAY_Z2 - BAY_Z1), at(bayLeft + i * BAY_W, FLOOR + 0.02, (BAY_Z1 + BAY_Z2) / 2), RGB(245, 245, 240), M.SmoothPlastic, CAT)
 	end
-	box(gerobak, "Kaki", V3(0.5, 1.2, 0.5), at(-3.6, FLOOR + 0.6, -1.3), WOOD_DARK, M.Wood)
-	box(gerobak, "Kaki", V3(0.5, 1.2, 0.5), at(3.6, FLOOR + 0.6, -1.3), WOOD_DARK, M.Wood)
-	for _, z in ipairs({ -1.4, 1.4 }) do
-		box(gerobak, "Pegangan", V3(2.8, 0.3, 0.3), at(-5.9, FLOOR + 2.9, z), WOOD, M.Wood)
+	box(pasar, "GarisParkir", V3(BAY_W * bayCount, 0.04, 0.2), at(0, FLOOR + 0.02, BAY_Z1), RGB(245, 245, 240), M.SmoothPlastic, CAT)
+	box(pasar, "GarisJualan", V3(BAY_W * bayCount, 0.04, 0.5), at(0, FLOOR + 0.02, BAY_Z2 + 0.4), RGB(245, 200, 40), M.SmoothPlastic, CAT)
+	for i = 1, bayCount do
+		local slot = box(pasar, "ParkirKendaraan", V3(1, 1, 1), CFrame.new(at(bayLeft + (i - 0.5) * BAY_W, FLOOR, (BAY_Z1 + BAY_Z2) / 2)), RGB(255, 255, 255), M.SmoothPlastic, {
+			Transparency = 1,
+			CanCollide = false,
+			CanQuery = false,
+			CanTouch = false,
+		})
+		CollectionService:AddTag(slot, "ParkirKendaraan")
 	end
-
-	for _, x in ipairs({ -4.5, 4.5 }) do
-		for _, z in ipairs({ -1.9, 1.9 }) do
-			box(gerobak, "Tiang", V3(0.3, 4.2, 0.3), at(x, mejaTop + 2.1, z), WOOD_DARK, M.Wood)
-		end
-	end
-	local roofY = mejaTop + 4.35
-	for i = 0, 4 do
-		local color = (i % 2 == 0) and RGB(205, 50, 45) or RGB(245, 240, 230)
-		box(gerobak, "Atap", V3(2.1, 0.3, 5), at(-4.2 + i * 2.1, roofY, 0), color, M.Fabric)
-	end
-	local papan = box(gerobak, "PapanNama", V3(6.5, 1.5, 0.2), at(0, roofY + 1, 0), WOOD, M.Wood)
-	signText(papan, Enum.NormalId.Front, "TAHU JURAGAN", RGB(120, 40, 20), CREAM)
-	signText(papan, Enum.NormalId.Back, "TAHU JURAGAN", RGB(120, 40, 20), CREAM)
-
-	local papanDepan = box(gerobak, "PapanDepan", V3(5.5, 1.5, 0.15), at(0, FLOOR + 1.9, 1.88), CREAM)
-	signText(papanDepan, Enum.NormalId.Back, "Tahu Goreng  •  Rp 500/biji", RGB(90, 50, 20), CREAM)
-
-	box(gerobak, "Etalase", V3(3, 1.8, 2.8), at(2.6, mejaTop + 0.9, 0.2), RGB(200, 230, 240), M.Glass, {
-		Transparency = 0.6,
-	})
-	for i = 0, 5 do
-		ball(gerobak, "TahuPajangan", 0.55, at(1.8 + (i % 3) * 0.8, mejaTop + 0.3, -0.2 + math.floor(i / 3) * 0.8), RGB(215, 150, 50))
-	end
-
-	local kompor = box(gerobak, "Kompor", V3(2.8, 0.8, 2.8), at(-1.6, mejaTop + 0.4, -0.3), METAL, M.DiamondPlate)
-	local komporTop = kompor.Position.Y - origin.Y + kompor.Size.Y / 2
-	disc(gerobak, "Api", 0.12, 1.6, at(-1.6, komporTop + 0.06, -0.3), RGB(80, 150, 255), M.Neon)
-
-	-- WAJAN (ini yang dipake FryService)
-	local wajan = folder(gerobak, "Wajan")
-	local pan = disc(wajan, "Pan", 0.5, 3.4, at(-1.6, komporTop + 0.37, -0.3), RGB(40, 40, 44), M.Metal)
-	wajan.PrimaryPart = pan
-	local panTop = pan.Position.Y - origin.Y + 0.25
-
-	local minyak = disc(wajan, "Minyak", 0.1, 2.9, at(-1.6, panTop + 0.03, -0.3), RGB(230, 175, 60), M.SmoothPlastic, {
-		Reflectance = 0.25,
-		Transparency = 0.1,
+	local zone = box(pasar, "TitikJualan", V3(BAY_W * bayCount + 2, 12, BAY_Z2 - BAY_Z1 + 2), at(0, FLOOR + 6, (BAY_Z1 + BAY_Z2) / 2), RGB(245, 200, 40), M.SmoothPlastic, {
+		Transparency = 1,
 		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
 	})
-	for _, x in ipairs({ -1, 1 }) do
-		box(wajan, "Gagang", V3(0.7, 0.2, 0.35), at(-1.6 + x * 2, panTop - 0.05, -0.3), RGB(30, 30, 30), M.Plastic)
-	end
-
-	local asap = Instance.new("ParticleEmitter")
-	asap.Name = "Asap"
-	asap.Enabled = false
-	asap.Color = ColorSequence.new(RGB(60, 60, 60), RGB(150, 150, 150))
-	asap.Transparency = NumberSequence.new(0.3, 1)
-	asap.Size = NumberSequence.new(0.6, 2.2)
-	asap.Lifetime = NumberRange.new(1, 1.6)
-	asap.Rate = 18
-	asap.Speed = NumberRange.new(2, 3.5)
-	asap.SpreadAngle = Vector2.new(15, 15)
-	asap.EmissionDirection = Enum.NormalId.Right -- silinder diputer: sumbu X lokal = atas
-	asap.Parent = minyak
-
-	local promptAttachment = Instance.new("Attachment")
-	promptAttachment.Name = "PromptAttachment"
-	promptAttachment.Parent = pan
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "GorengPrompt"
-	prompt.ActionText = "Goreng Tahu"
-	prompt.ObjectText = "Wajan"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 10
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = promptAttachment
-
-	CollectionService:AddTag(wajan, "Wajan")
+	zone:SetAttribute("Lokasi", "Pasar")
+	CollectionService:AddTag(zone, "TitikJualan")
+	signPost(pasar, at(-BAY_W * bayCount / 2 - 5, FLOOR, BAY_Z2), 9, "TITIK JUALAN\nParkir di sini", 1, RGB(90, 50, 20), RGB(250, 215, 70))
 
 	-- Lapak-lapak tetangga biar kerasa pasar.
 	local function lapak(name, x, z, tarpColor, goodsColor)
@@ -344,7 +314,7 @@ local function buildPasar(origin)
 	box(pasar, "Krat", V3(2, 1.6, 2), at(7.2, FLOOR + 0.8, -1.5), WOOD, M.WoodPlanks)
 	box(pasar, "Krat", V3(2, 1.6, 2), CFrame.new(at(7.4, FLOOR + 2.4, -1.4)) * CFrame.Angles(0, math.rad(15), 0), WOOD, M.WoodPlanks)
 
-	-- Spawn di belakang gerobak (sisi tukang goreng), ngadep gerobak.
+	-- Spawn di antara lapak, ngadep titik jualan (kendaraan muncul di situ).
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "SpawnPasar"
 	spawn.Anchored = true
@@ -418,7 +388,7 @@ do
 
 	-- Marka jalur.
 	for x = -30, 30, 15 do
-		box(plot, "Marka", V3(0.4, 0.05, 20), c + V3(x, 0.32, 4), RGB(240, 240, 235))
+		box(plot, "Marka", V3(0.4, 0.05, 20), c + V3(x, 0.32, 4), RGB(240, 240, 235), M.SmoothPlastic, CAT)
 	end
 
 	-- Bus + angkot (kotak doang, nanti diganti model beneran).

@@ -5,8 +5,14 @@
 -- berapa lama -> kualitas (Mentah/Oke/Perfect/Gosong) -> kasih uang.
 -- Client NGGAK pernah ngirim kualitas atau jumlah uang, cuma "angkat sekarang".
 --
--- Wajan dicari lewat tag CollectionService "Wajan" (lihat tools/BuildPasar.luau),
--- jadi map bebas diubah/ditambah wajan tanpa ngedit script ini.
+-- Wajan dicari lewat tag CollectionService "Wajan" (sekarang nempel di kendaraan,
+-- lihat tools/Kendaraan/Wajan.luau), jadi wajan bebas ditambah tanpa ngedit script ini.
+--
+-- Atribut wajan (dipasang KendaraanService, opsional):
+--   OwnerUserId  cuma pemilik kendaraan yang boleh goreng
+--   BisaJualan   false = kendaraan lagi nggak diparkir di titik jualan
+-- Selama goreng, script ini nyalain atribut "LagiGoreng" di wajan
+-- (KendaraanService ngunci kendaraannya biar nggak bisa jalan).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -22,6 +28,19 @@ local TAHU_PER_BATCH = 5
 
 local sessions = {} -- [player] = session yang lagi goreng
 local busyWoks = {} -- [wok] = player yang lagi make
+local coolingWoks = {} -- [wok] = true selama jeda abis diangkat
+
+local function canFryAt(player, wok)
+	local owner = wok:GetAttribute("OwnerUserId")
+	if owner ~= nil and owner ~= player.UserId then
+		return false
+	end
+	return wok:GetAttribute("BisaJualan") ~= false
+end
+
+local function refreshPrompt(wok, prompt)
+	prompt.Enabled = not busyWoks[wok] and not coolingWoks[wok] and wok:GetAttribute("BisaJualan") ~= false
+end
 
 local function getUang(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -40,14 +59,16 @@ local function spawnTahu(wok)
 	folder.Parent = wok
 
 	local tahuList = {}
-	local radius = oil.Size.Z * 0.22
+	-- Ukuran & jarak ngikutin lebar minyak (wajan di kendaraan lebih kecil).
+	local radius = oil.Size.Z * 0.25
+	local size = math.clamp(oil.Size.Z * 0.24, 0.4, 0.6)
 	local top = oil.Position.Y + oil.Size.X / 2
 	for i = 1, TAHU_PER_BATCH do
 		local angle = (i / TAHU_PER_BATCH) * math.pi * 2
 		local tahu = Instance.new("Part")
 		tahu.Name = "Tahu"
 		tahu.Shape = Enum.PartType.Ball
-		tahu.Size = Vector3.new(0.6, 0.6, 0.6)
+		tahu.Size = Vector3.new(size, size, size)
 		tahu.Material = Enum.Material.SmoothPlastic
 		tahu.Color = FryConfig.TAHU_RAW
 		tahu.Anchored = true
@@ -56,7 +77,7 @@ local function spawnTahu(wok)
 		tahu.CanTouch = false
 		tahu.Position = Vector3.new(
 			oil.Position.X + math.cos(angle) * radius,
-			top + 0.18,
+			top + size * 0.3, -- setengah kecelup
 			oil.Position.Z + math.sin(angle) * radius
 		)
 		tahu.Parent = folder
@@ -78,11 +99,13 @@ local function liftTahuVisual(folder, tahuList)
 	end)
 end
 
-local function setSmoke(wok, enabled)
+-- Emitter di minyak: "Asap" (pas mulai gosong), "Gelembung" (selama goreng).
+-- Dua-duanya opsional, wajan tanpa emitter tetep jalan.
+local function setOilEffect(wok, effectName, enabled)
 	local oil = wok:FindFirstChild("Minyak")
-	local smoke = oil and oil:FindFirstChild("Asap")
-	if smoke then
-		smoke.Enabled = enabled
+	local emitter = oil and oil:FindFirstChild(effectName)
+	if emitter then
+		emitter.Enabled = enabled
 	end
 end
 
@@ -90,13 +113,16 @@ local function endSession(player, session)
 	sessions[player] = nil
 	busyWoks[session.wok] = nil
 	session.heartbeat:Disconnect()
-	setSmoke(session.wok, false)
+	setOilEffect(session.wok, "Asap", false)
+	setOilEffect(session.wok, "Gelembung", false)
 	liftTahuVisual(session.tahuFolder, session.tahuList)
+	session.wok:SetAttribute("LagiGoreng", false)
 
+	coolingWoks[session.wok] = true
+	refreshPrompt(session.wok, session.prompt)
 	task.delay(FryConfig.COOLDOWN_SECONDS, function()
-		if not busyWoks[session.wok] then
-			session.prompt.Enabled = true
-		end
+		coolingWoks[session.wok] = nil
+		refreshPrompt(session.wok, session.prompt)
 	end)
 end
 
@@ -126,10 +152,11 @@ local function finish(player, session, progress)
 end
 
 local function startFrying(player, wok, prompt)
-	if sessions[player] or busyWoks[wok] then
+	if sessions[player] or busyWoks[wok] or coolingWoks[wok] or not canFryAt(player, wok) then
 		return
 	end
 
+	wok:SetAttribute("LagiGoreng", true)
 	local tahuFolder, tahuList = spawnTahu(wok)
 	local session = {
 		wok = wok,
@@ -141,6 +168,7 @@ local function startFrying(player, wok, prompt)
 	sessions[player] = session
 	busyWoks[wok] = player
 	prompt.Enabled = false
+	setOilEffect(wok, "Gelembung", true)
 
 	-- Visual di dunia (keliatan semua player): warna tahu + asap pas gosong.
 	local gosongStart = FryConfig.gosongStart()
@@ -150,7 +178,7 @@ local function startFrying(player, wok, prompt)
 		for _, tahu in ipairs(tahuList) do
 			tahu.Color = color
 		end
-		setSmoke(wok, progress >= gosongStart)
+		setOilEffect(wok, "Asap", progress >= gosongStart)
 
 		if progress >= 1 then
 			finish(player, session, 1) -- kelamaan: otomatis keangkat, gosong
@@ -186,6 +214,10 @@ local function setupWok(wok)
 	prompt.Triggered:Connect(function(player)
 		startFrying(player, wok, prompt)
 	end)
+	wok:GetAttributeChangedSignal("BisaJualan"):Connect(function()
+		refreshPrompt(wok, prompt)
+	end)
+	refreshPrompt(wok, prompt)
 end
 
 for _, wok in ipairs(CollectionService:GetTagged(WOK_TAG)) do

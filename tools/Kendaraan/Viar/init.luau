@@ -25,7 +25,9 @@
 	  PeganganKiri/PeganganKanan (attachment di handel), SikuKiri/SikuKanan
 	  (attachment di Kemudi), Motor6D EngselPanel & Piston (lihat Box.luau),
 	  PangkalPiston<i> (attachment di Chassis), atribut model "Kendaraan" = id
-	  di KendaraanConfig, "SudutBuka" = sudut panel kebuka (radian).
+	  di KendaraanConfig, "SudutBuka" / "SudutPintu" = sudut panel / pintu belakang
+	  kebuka (radian), Motor6D EngselPintu, PenghalangPintu (collider lubang
+	  pintu), RuangBox (penanda ruang dalem box), KursiJaga (Seat) + JagaPrompt.
 
 	Cek permukaan numpuk (bikin kedip) abis ngubah apa-apa:
 	  print(require(game.ServerStorage.Tools.CekTumpuk)(game.ServerStorage.Kendaraan.Viar))
@@ -69,7 +71,6 @@ return function()
 
 	-- ── COLLIDER (diatur Rig: nggak keliatan, punya massa) ──────────
 	-- Atas Chassis = lantai box, jadi orang bisa berdiri di dalem box.
-	-- Box-nya sendiri visual doang, biar fisika nyetir tetep sama.
 	local zMid = (D.BOX_DEPAN + D.BOX_BELAKANG) / 2
 	local chassisH = D.BED_TOP - 1.4
 	local chassis = Bantu.box(viar, "Chassis", V3(D.BOX_W, chassisH, D.BOX_BELAKANG - D.BOX_DEPAN), L(0, 1.4 + chassisH / 2, zMid), W.RANGKA)
@@ -85,6 +86,36 @@ return function()
 	for name, pos in pairs(wheels) do
 		Bantu.ball(viar, name, D.WHEEL_R * 2, L(pos.X, pos.Y, pos.Z), W.RANGKA):SetAttribute("Tabrakan", "Roda") -- tanpa gesekan (lihat Rig)
 	end
+
+	-- Dinding box padat (nggak bisa ditembus); masuknya cuma lewat pintu
+	-- belakang. "PenghalangPintu" nutup lubang pintu, dimatiin server pas lapak
+	-- buka (pintu kebuka) & dinyalain lagi pas tutup.
+	local T = 0.16
+	local half = D.BOX_W / 2
+	local wallH = D.BOX_TOP - D.BED_TOP
+	local wallY = D.BED_TOP + wallH / 2
+	local boxLen = D.BOX_BELAKANG - D.BOX_DEPAN
+	local backZ = D.BOX_BELAKANG - T / 2
+	local doorHalf = D.PINTU_W / 2
+	local doorH = D.PINTU_TOP - D.BED_TOP
+	local colliders = {
+		{ "TabrakDindingKiri", V3(T, wallH, boxLen), L(-(half - T / 2), wallY, zMid) },
+		{ "TabrakDindingKanan", V3(T, wallH, boxLen), L(half - T / 2, wallY, zMid) },
+		{ "TabrakDindingDepan", V3(D.BOX_W - 2 * T, wallH, T), L(0, wallY, D.BOX_DEPAN + T / 2) },
+		{ "TabrakDindingBelakang", V3(half - T - doorHalf, wallH, T), L(-(doorHalf + (half - T - doorHalf) / 2), wallY, backZ) },
+		{ "TabrakDindingBelakang", V3(half - T - doorHalf, wallH, T), L(doorHalf + (half - T - doorHalf) / 2, wallY, backZ) },
+		{ "TabrakAtasPintu", V3(D.PINTU_W, D.BOX_TOP - D.PINTU_TOP, T), L(0, (D.BOX_TOP + D.PINTU_TOP) / 2, backZ) },
+		{ "PenghalangPintu", V3(D.PINTU_W, doorH, T), L(0, D.BED_TOP + doorH / 2, backZ) },
+	}
+	for _, c in ipairs(colliders) do
+		Bantu.box(viar, c[1], c[2], c[3], W.RANGKA):SetAttribute("Tabrakan", true)
+	end
+	-- Ruang dalem box (nggak nabrak, cuma penanda): KendaraanService ngecek
+	-- siapa yang masih di dalem pas lapak mau ditutup.
+	Bantu.box(viar, "RuangBox", V3(D.BOX_W - 2 * T, wallH, boxLen - 2 * T), L(0, wallY, zMid), W.RANGKA, nil, {
+		Transparency = 1,
+		CanQuery = false,
+	})
 
 	-- ── BAGIAN-BAGIAN ───────────────────────────────────────────────
 	local rodaDepan = Roda(viar, "RodaDepan", L(0, D.WHEEL_R, D.AS_DEPAN), D.WHEEL_R, 0.6)
@@ -102,6 +133,7 @@ return function()
 		pangkal.Parent = chassis
 	end
 	viar:SetAttribute("SudutBuka", box.sudutBuka)
+	viar:SetAttribute("SudutPintu", box.sudutPintu)
 
 	-- ── PAPAN NAMA PEMILIK (teksnya diisi KendaraanService) ─────────
 	local tagAttachment = Instance.new("Attachment")

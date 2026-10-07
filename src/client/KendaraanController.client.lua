@@ -5,15 +5,18 @@
 -- tiap frame lewat constraint di Chassis:
 --   Gerak (LinearVelocity)   -> kecepatan maju/mundur
 --   Arah  (AlignOrientation) -> arah hadap; sekalian bikin kendaraan selalu tegak
--- Input dibaca dari VehicleSeat.ThrottleFloat/SteerFloat yang udah diisi
--- kontrol bawaan Roblox: WASD/panah, gamepad, sama thumbstick di HP.
--- Angka-angkanya per kendaraan di KendaraanConfig.
+-- Input dibaca langsung dari arah gerak kontrol bawaan (PlayerModule
+-- GetMoveVector: WASD/panah, stik gamepad, thumbstick HP). VehicleController
+-- bawaan Roblox kadang nggak nyala pas duduk (ThrottleFloat diem di 0 padahal
+-- tombol dipencet), jadi ThrottleFloat/SteerFloat jok cuma cadangan (trigger
+-- gamepad), dan nilai akhirnya ditulis balik ke jok biar animasi setir
+-- keliatan di player lain. Angka-angkanya per kendaraan di KendaraanConfig.
 --
 -- Selain itu (cuma tampilan, buat semua kendaraan, tiap client sendiri-sendiri):
 --   - roda muter + setir belok
 --   - tangan pengendara megang stang (IKControl ke attachment Pegangan*)
---   - panel samping box kebuka/ketutup (TweenService) ngikutin atribut
---     "LapakBuka" dari server, piston penyangganya ikut nyesuaiin
+--   - panel samping box & pintu belakang kebuka/ketutup (TweenService)
+--     ngikutin atribut "LapakBuka" dari server, piston penyangganya ikut nyesuaiin
 --   - prompt di kendaraan punya orang lain disembunyiin
 --   - petunjuk kecil di atas layar (cara nyetir / harus parkir di titik jualan)
 
@@ -84,6 +87,25 @@ local function approachZero(value, amount)
 	return value - math.sign(value) * amount
 end
 
+-- Kontrol bawaan (PlayerModule) buat baca arah gerak; di-require pas pertama
+-- dibutuhin (PlayerModule bisa belum ada pas script ini mulai).
+local controls = nil
+
+local function readInput(seat)
+	if not controls then
+		local scripts = player:FindFirstChild("PlayerScripts")
+		local module = scripts and scripts:FindFirstChild("PlayerModule")
+		if module then
+			controls = require(module):GetControls()
+		end
+	end
+	local move = controls and controls:GetMoveVector() or Vector3.zero
+	-- WASD/stik: maju = -Z, kanan = +X. Kalau diem, pake nilai jok (trigger gamepad).
+	local throttle = move.Z ~= 0 and math.clamp(-move.Z, -1, 1) or seat.ThrottleFloat
+	local steer = move.X ~= 0 and math.clamp(move.X, -1, 1) or seat.SteerFloat
+	return throttle, steer
+end
+
 local function drive(seat, state, dt)
 	local chassis, stats = state.chassis, state.stats
 	local gerak = chassis:FindFirstChild("Gerak")
@@ -100,7 +122,10 @@ local function drive(seat, state, dt)
 
 	-- Mulai dari kecepatan beneran (kalau nabrak, kecepatannya ikut turun).
 	local speed = chassis.AssemblyLinearVelocity:Dot(forward)
-	local throttle = seat.ThrottleFloat
+	local throttle, steer = readInput(seat)
+	-- Tulis balik ke jok: animasi setir di semua client baca SteerFloat.
+	seat.ThrottleFloat = throttle
+	seat.SteerFloat = steer
 	if throttle > 0 then
 		if speed < -STOPPED_SPEED then
 			speed = math.min(speed + stats.brake * dt, 0) -- lagi mundur: rem dulu
@@ -120,7 +145,7 @@ local function drive(seat, state, dt)
 	-- Belok cuma kalau jalan; pas mundur arahnya kebalik (kayak kendaraan beneran).
 	local grip = math.clamp(math.abs(speed) / stats.turnFullSpeed, 0, 1)
 	local direction = speed >= 0 and 1 or -1
-	state.yaw -= seat.SteerFloat * stats.turnRate * grip * direction * dt
+	state.yaw -= steer * stats.turnRate * grip * direction * dt
 	local actualYaw = yawOf(chassis.CFrame)
 	local lead = angleDiff(state.yaw, actualYaw)
 	if math.abs(lead) > MAX_YAW_LEAD then
@@ -178,6 +203,8 @@ local function getRig(model)
 		engsel = nil, -- Motor6D panel samping
 		pistons = {},
 		openAngle = model:GetAttribute("SudutBuka") or 0,
+		doors = {}, -- Motor6D pintu belakang + arah putarnya
+		doorAngle = model:GetAttribute("SudutPintu") or 0,
 		sudut = Instance.new("NumberValue"), -- sudut panel sekarang (di-tween)
 	}
 	local pistonMotors = {}
@@ -189,6 +216,8 @@ local function getRig(model)
 				rig.steer = d
 			elseif d.Name == "EngselPanel" then
 				rig.engsel = d
+			elseif d.Name == "EngselPintu" then
+				table.insert(rig.doors, { motor = d, arah = d.Part1:GetAttribute("Arah") or 1 })
 			elseif d.Name == "Piston" then
 				table.insert(pistonMotors, d)
 			end
@@ -285,6 +314,11 @@ local function updatePanel(rig, model)
 		local center = p.tabung and p.pangkal + dir * p.length / 2 or ujung - dir * p.length / 2
 		-- Motor6D: Part1 = Part0 * C0 * Transform * C1^-1  ->  Transform = C0^-1 * tujuan * C1
 		p.motor.Transform = p.motor.C0:Inverse() * (CFrame.new(center) * rot) * p.motor.C1
+	end
+	-- Pintu belakang kebuka bareng panel (porsi bukaannya sama).
+	local share = rig.openAngle > 0 and angle / rig.openAngle or 0
+	for _, door in ipairs(rig.doors) do
+		door.motor.Transform = CFrame.Angles(0, door.arah * rig.doorAngle * share, 0)
 	end
 end
 

@@ -62,13 +62,18 @@ konsep lokasi/cabang, bukan keliling.
     depan keliatan, pijakan kaki. Tangan avatar megang stang (IKControl).
   - Box (tempat stok + etalase): rangka aluminium, atap kabin melengkung di
     atas pengendara, papan nama "TAHU JURAGAN" di atas (satu-satunya),
-    pintu belakang, sepatbor + karet lumpur, lampu + plat. Dalemnya counter,
-    etalase kaca, tirisan, baskom tahu mentah, stok, lampu TL.
+    sepatbor + karet lumpur, lampu + plat. Dindingnya padat (nggak bisa
+    ditembus); **masuknya lewat pintu belakang 2 daun** yang kebuka bareng
+    panel pas buka lapak, naik pake tangga lipat di belakang bumper. Dalemnya
+    counter, etalase kaca, tirisan, baskom tahu mentah, stok, lampu TL, dan
+    **bangku jaga** di balik etalase (**G**, "Duduk Jaga") buat jaga/layanin
+    pembeli lewat bukaan samping. Pas lapak ditutup, yang masih di dalem box
+    dipindahin ke belakang dulu.
   - **Buka Lapak** (otomatis pas kendaraan diem di TITIK JUALAN tanpa supir):
     panel samping kiri keangkat jadi peneduh (TweenService, disangga 2
     piston), terus di sisi luar muncul **meja goreng** setinggi pinggang
     (kompor + wajan, api keliatan, tabung gas di tanah) + **bangku plastik**
-    di tanah. Lapak luar ini anchored & nggak di-weld ke kendaraan;
+    di tanah + tangga ke pintu belakang. Lapak luar ini anchored & nggak di-weld ke kendaraan;
     kendaraannya dikunci selama lapak buka. Depan meja & etalase dikosongin
     buat pembeli nanti.
   - **Tutup Lapak**: pencet **F** (naik) → meja + bangku ilang, panel nutup,
@@ -76,9 +81,9 @@ konsep lokasi/cabang, bukan keliling.
   - Nyetir: W/S gas/mundur, A/D belok, Spasi turun (HP: stik + tombol
     lompat). Selalu tegak, nggak bisa kebalik.
   - Goreng (**E** di wajan) sambil **berdiri** di samping meja atau **duduk**
-    di bangku (**G**). Prompt cuma muncul pas relevan: F (jarak 6) mati
-    selama nyetir/goreng/duduk jualan; G (jarak 5, harus keliatan langsung)
-    & E (jarak 5) cuma ada pas lapak buka.
+    di bangku plastik (**G**, "Duduk Goreng"). Prompt cuma muncul pas
+    relevan: F (jarak 6) mati selama nyetir/goreng/duduk; G (jarak 5, harus
+    keliatan langsung) & E (jarak 5) cuma ada pas lapak buka.
   - Cuma pemiliknya yang bisa naik/duduk/goreng di kendaraannya.
   - **Depan Sekolah, Terminal, Alun-alun**: plot cabang yang masih
     terkunci (gerbang/palang ditutup + papan "Segera dibuka"), disiapin

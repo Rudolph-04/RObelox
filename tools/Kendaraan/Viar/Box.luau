@@ -1,8 +1,8 @@
 --[[
 	Box jualan di belakang: rangka aluminium (tiang di tiap sudut + rel atas
-	& bawah), dinding, pintu belakang, atap box + papan nama "TAHU JURAGAN",
-	atap kabin melengkung di atas pengendara, dan PANEL SAMPING KIRI yang
-	bisa diangkat jadi kanopi, disangga 2 piston.
+	& bawah), dinding, atap box + papan nama "TAHU JURAGAN", atap kabin
+	melengkung di atas pengendara, PANEL SAMPING KIRI yang bisa diangkat jadi
+	kanopi (disangga 2 piston), dan PINTU BELAKANG 2 daun (jalan masuk box).
 
 	Panel & piston digerakin client (KendaraanController) lewat Motor6D:
 	  "EngselPanel" (chassis -> PanelLuar): Transform = putar di sumbu Z
@@ -11,11 +11,13 @@
 	      biar tabung nempel di "PangkalPiston<i>" (attachment di Chassis)
 	      dan batang nempel di "UjungPiston<i>" (attachment di PanelLuar).
 	      Atribut part: Piston = i, Bagian = "Tabung" / "Batang".
+	  "EngselPintu" (chassis -> DaunPintu tiap daun): Transform = putar di
+	      sumbu Y engsel sebesar Arah * sudut; kebuka bareng panel.
 	Attachment di Chassis dibikin di init.luau (Chassis belum ada di sini),
 	posisinya dari pangkalPiston yang di-return.
 
 	Return: { gerak = {...} buat Rig, pangkalPiston = { Vector3 dunia, ... },
-	          sudutBuka = radian }
+	          sudutBuka = radian, sudutPintu = radian }
 ]]
 
 local D = require(script.Parent.Dasar)
@@ -75,28 +77,54 @@ local function dinding(m)
 	local y = (WALL_TOP + D.BED_TOP) / 2
 	local innerX = HALF - F -- di antara tiang sudut
 	box(m, "DindingKanan", V3(D.PANEL, h, INNER_Z2 - INNER_Z1), L(WALL_X, y, Z_MID), D.DINDING, M.SmoothPlastic)
-	for _, z in ipairs({ ZF + D.MASUK + D.PANEL / 2, ZB - D.MASUK - D.PANEL / 2 }) do
-		box(m, z < 0 and "DindingDepan" or "DindingBelakang", V3(innerX * 2, h, D.PANEL), L(0, y, z), D.DINDING, M.SmoothPlastic)
+	box(m, "DindingDepan", V3(innerX * 2, h, D.PANEL), L(0, y, ZF + D.MASUK + D.PANEL / 2), D.DINDING, M.SmoothPlastic)
+
+	-- Dinding belakang dibolongin buat pintu: bagian kiri & kanan pintu + atas pintu.
+	local backZ = ZB - D.MASUK - D.PANEL / 2
+	local doorHalf = D.PINTU_W / 2
+	local sideW = innerX - doorHalf
+	for _, sx in ipairs({ -1, 1 }) do
+		box(m, "DindingBelakang", V3(sideW, h, D.PANEL), L(sx * (doorHalf + sideW / 2), y, backZ), D.DINDING, M.SmoothPlastic)
+		-- Kusen aluminium di sisi bukaan pintu (nempel di muka luar dinding).
+		box(m, "KusenPintu", V3(0.1, D.PINTU_TOP - D.BED_TOP, D.MASUK), L(sx * (doorHalf + 0.05), (D.PINTU_TOP + D.BED_TOP) / 2, ZB - D.MASUK / 2), D.ALU, M.Metal)
 	end
+	local headH = WALL_TOP - D.PINTU_TOP
+	box(m, "DindingAtasPintu", V3(D.PINTU_W, headH, D.PANEL), L(0, D.PINTU_TOP + headH / 2, backZ), D.DINDING, M.SmoothPlastic)
+	box(m, "KusenPintu", V3(D.PINTU_W + 0.2, 0.08, D.MASUK), L(0, D.PINTU_TOP + 0.04, ZB - D.MASUK / 2), D.ALU, M.Metal)
+
 	-- Dinding counter (bawah bukaan kiri), muka luarnya keliatan pembeli.
 	local counterH = D.COUNTER_TOP - F - D.BED_TOP
 	box(m, "DindingCounter", V3(D.PANEL, counterH, INNER_Z2 - INNER_Z1), L(-WALL_X, D.BED_TOP + counterH / 2, Z_MID), D.DINDING, M.SmoothPlastic)
 
 	-- Branding: nama "TAHU JURAGAN" cuma di papan atas; di badan box cuma
-	-- strip merah polos + harga.
-	stripSamping(m, "StripMerah", 1, WALL_TOP - 0.75, 0.35, nil, D.MERAH)
+	-- strip merah polos (di atas pintu belakang) + harga.
+	local stripY = WALL_TOP - 0.28
+	stripSamping(m, "StripMerah", 1, stripY, 0.35, nil, D.MERAH)
 	stripSamping(m, "StripHarga", 1, D.BED_TOP + 1.0, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
 	stripSamping(m, "StripHarga", -1, D.BED_TOP + 0.75, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
 	for _, z in ipairs({ ZF + D.MASUK / 2, ZB - D.MASUK / 2 }) do
-		box(m, "StripMerah", V3(innerX * 2, 0.35, D.MASUK), L(0, WALL_TOP - 0.75, z), D.MERAH, M.SmoothPlastic)
+		box(m, "StripMerah", V3(innerX * 2, 0.35, D.MASUK), L(0, stripY, z), D.MERAH, M.SmoothPlastic)
 	end
+end
 
-	-- Pintu belakang (nongol dari dinding, segaris muka rangka).
-	local doorZ = ZB - D.MASUK / 2
-	box(m, "PintuBelakang", V3(2.6, 4.2, D.MASUK), L(0, D.BED_TOP + 0.3 + 2.1, doorZ), RGB(235, 230, 218), M.SmoothPlastic)
-	box(m, "GagangPintu", V3(0.12, 0.6, 0.08), L(0.95, D.BED_TOP + 2.3, ZB + 0.04), W.KROM, M.Metal)
-	for _, y in ipairs({ D.BED_TOP + 0.9, D.BED_TOP + 3.9 }) do
-		box(m, "EngselPintu", V3(0.3, 0.25, 0.06), L(-1.15, y, ZB + 0.03), W.KROM, M.Metal)
+-- Pintu belakang 2 daun, kebuka ke luar (ke samping) bareng panel samping.
+-- Tiap daun = grup sendiri, root-nya "DaunPintu" (atribut Arah: arah putar
+-- di sumbu Y engsel), nyambung ke chassis pake Motor6D "EngselPintu".
+local SUDUT_PINTU = math.rad(170) -- nempel ke dinding belakang, nyisa dikit biar nggak sebidang
+
+local function pintuBelakang(viar, gerak)
+	local doorHalf = D.PINTU_W / 2
+	local doorH = D.PINTU_TOP - D.BED_TOP
+	local outerZ = ZB - D.MASUK / 2 + 0.03 -- muka luar daun pintu (garis engsel)
+	for _, sx in ipairs({ -1, 1 }) do
+		local group = model(viar, sx < 0 and "PintuKiri" or "PintuKanan")
+		local daun = box(group, "DaunPintu", V3(doorHalf - 0.02, doorH - 0.02, 0.1), L(sx * doorHalf / 2, D.BED_TOP + doorH / 2, outerZ - 0.05), RGB(235, 230, 218), M.SmoothPlastic)
+		daun:SetAttribute("Arah", sx) -- kiri muter negatif, kanan positif: dua-duanya ke luar
+		box(group, "GagangPintu", V3(0.08, 0.7, 0.08), L(sx * 0.22, D.BED_TOP + 2.4, outerZ + 0.04), W.KROM, M.Metal)
+		for _, yy in ipairs({ D.BED_TOP + 0.8, D.PINTU_TOP - 0.8 }) do
+			cylinder(group, "EngselPintu", 0.35, 0.12, L(sx * doorHalf, yy, outerZ) * Bantu.UPRIGHT, W.KROM, M.Metal)
+		end
+		table.insert(gerak, { group = group, root = daun, nama = "EngselPintu", sendi = L(sx * doorHalf, D.BED_TOP + doorH / 2, outerZ) })
 	end
 end
 
@@ -208,5 +236,6 @@ return function(viar)
 	atapKabin(m)
 	local gerak = {}
 	local pangkal = panelSamping(viar, m, gerak)
-	return { gerak = gerak, pangkalPiston = pangkal, sudutBuka = SUDUT_BUKA }
+	pintuBelakang(viar, gerak)
+	return { gerak = gerak, pangkalPiston = pangkal, sudutBuka = SUDUT_BUKA, sudutPintu = SUDUT_PINTU }
 end

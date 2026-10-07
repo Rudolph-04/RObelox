@@ -1,10 +1,13 @@
 --[[
-	Isi box: tempat nyimpen barang + etalase. Masaknya NGGAK di sini (goreng
-	minyak panas di box tertutup nggak masuk akal), tapi di meja goreng di
-	luar box yang muncul pas buka lapak (lihat LapakLuar.luau).
+	Isi box: tempat nyimpen barang + etalase + bangku jaga. Masaknya NGGAK di
+	sini (goreng minyak panas di box tertutup nggak masuk akal), tapi di meja
+	goreng di luar box yang muncul pas buka lapak (lihat LapakLuar.luau).
+	Masuk box lewat pintu belakang (kebuka pas lapak buka, ada tangganya).
 
 	  depan  [ ETALASE KACA (ngadep pembeli) ][ tirisan ][ baskom, sambel ]  <- counter (kiri)
+	                  BANGKU JAGA (Seat "KursiJaga"), ngadep kiri
 	         [ stok: gabus, krat, jerigen ]                [ karung ]       <- sisi kanan
+	                                       pintu belakang ^
 ]]
 
 local D = require(script.Parent.Dasar)
@@ -99,6 +102,41 @@ local function meja(lapak)
 	box(m, "KertasBungkus", V3(0.6, 0.15, 0.4), L(-1.85, TOP + 0.075, 6.1), RGB(235, 225, 195), M.SmoothPlastic)
 end
 
+local function kursiJaga(viar, lapak)
+	-- Bangku kayu di balik etalase, ngadep bukaan samping (jaga lapak &
+	-- layanin pembeli). Masuknya lewat pintu belakang pas lapak buka.
+	local m = model(lapak, "BangkuJaga")
+	local x, top, z = 0.75, BED + 1.1, 1.2
+	cylinder(m, "DudukanBangku", 0.15, 1.1, L(x, top - 0.075, z) * UPRIGHT, RGB(35, 35, 38), M.Leather)
+	local feet, tops = {}, {}
+	for _, d in ipairs({ V3(-1, 0, -1), V3(1, 0, -1), V3(1, 0, 1), V3(-1, 0, 1) }) do
+		table.insert(feet, D.P(x + d.X * 0.4, BED, z + d.Z * 0.4))
+		table.insert(tops, D.P(x + d.X * 0.25, top - 0.15, z + d.Z * 0.25))
+	end
+	for i = 1, 4 do
+		Bantu.tube(m, "KakiBangku", feet[i], tops[i], 0.1, W.KAYU_GELAP, M.Wood)
+	end
+	for i = 1, 4 do
+		Bantu.tube(m, "PijakanBangku", feet[i]:Lerp(tops[i], 0.4), feet[i % 4 + 1]:Lerp(tops[i % 4 + 1], 0.4), 0.07, W.KROM, M.Metal)
+	end
+	for _, dz in ipairs({ -0.35, 0.35 }) do
+		Bantu.tube(m, "TiangSandaran", D.P(x + 0.42, top, z + dz), D.P(x + 0.55, top + 0.95, z + dz), 0.08, W.KAYU_GELAP, M.Wood)
+	end
+	box(m, "Sandaran", V3(0.1, 0.4, 0.95), L(x + 0.6, top + 0.8, z) * CFrame.Angles(0, 0, math.rad(-8)), RGB(35, 35, 38), M.Leather)
+
+	local seat = Instance.new("Seat")
+	seat.Name = "KursiJaga"
+	seat.Anchored = true
+	seat.Size = V3(1, 0.2, 1)
+	seat.CFrame = L(x, top - 0.1, z) * CFrame.Angles(0, math.rad(90), 0) -- ngadep -X (ke etalase & pembeli)
+	seat.Transparency = 1
+	seat.Parent = viar
+	-- Jangkauan pendek biar cuma kepencet dari dalem box (dari luar dinding
+	-- jaraknya > 4). Tanpa line of sight: kamera orang ketiga biasanya di luar
+	-- box, jadi garis kamera -> bangku pasti ketutup dinding/panel.
+	D.prompt(seat, "JagaPrompt", "Duduk Jaga", "Bangku", Enum.KeyCode.G, Enum.KeyCode.ButtonX, 3.5)
+end
+
 local function stok(lapak)
 	-- Sisi kanan box: stok barang.
 	local m = model(lapak, "Stok")
@@ -132,5 +170,6 @@ return function(viar)
 	meja(lapak)
 	stok(lapak)
 	plafon(lapak)
+	kursiJaga(viar, lapak)
 	return lapak
 end

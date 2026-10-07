@@ -16,7 +16,11 @@
 --   - TUTUP LAPAK pas pemilik pencet Naik (F): lapak luar dihapus, panel
 --     nutup, kendaraan dilepas, baru dia didudukin di jok. Nggak bisa selama
 --     lagi goreng (atribut "LagiGoreng" di wajan, diset FryService).
---   - prompt Naik (F) & Duduk Jualan (G) nyala-mati (lihat refreshPrompts)
+--   - pintu belakang: client ngebuka daunnya bareng panel (atribut LapakBuka);
+--     server matiin "PenghalangPintu" (collider lubang pintu) pas lapak buka,
+--     nyalain lagi pas tutup (yang masih di dalem box dipindahin ke belakang).
+--   - prompt Naik (F), Duduk Goreng (G, bangku luar) & Duduk Jaga (G, bangku di
+--     dalem box) nyala-mati (lihat refreshPrompts)
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -37,7 +41,7 @@ local folder = Instance.new("Folder")
 folder.Name = "Kendaraan"
 folder.Parent = workspace
 
-local owned = {} -- [player] = { model, chassis, kemudi, gerak, arah, naikPrompt, lapakTemplate, + selama lapak buka: lapak, wajan, kursi, dudukPrompt }
+local owned = {} -- [player] = { model, chassis, kemudi, gerak, arah, naikPrompt, kursiJaga, jagaPrompt, penghalang, ruang, lapakTemplate, + selama lapak buka: lapak, wajan, kursi, dudukPrompt }
 local lastSpawn = {} -- [player] = os.clock() terakhir keluarin kendaraan
 
 local function isInSellZone(position)
@@ -138,6 +142,9 @@ local function despawn(player)
 		if v.kursi then
 			ejectFrom(v.kursi)
 		end
+		if v.kursiJaga then
+			ejectFrom(v.kursiJaga)
+		end
 		-- Langsung keluar dari dunia (biar nggak tabrakan sama penggantinya),
 		-- Destroy-nya ditunda biar FryService sempet beresin sesi goreng dulu.
 		v.model.Parent = nil
@@ -176,15 +183,43 @@ local function canOpen(v)
 		and isInSellZone(v.chassis.Position)
 end
 
--- Prompt cuma nyala pas relevan (tombolnya beda semua, jadi nggak rebutan):
---   F (naik)  : jok supir kosong, nggak lagi goreng, nggak ada yang duduk jualan
---   G (duduk) : cuma ada pas lapak buka; mati kalau bangkunya udah didudukin
---   E (goreng): cuma ada pas lapak buka; nyala-matinya diatur FryService
+local function sellerSeated(v)
+	return (v.kursi ~= nil and v.kursi.Occupant ~= nil) or (v.kursiJaga ~= nil and v.kursiJaga.Occupant ~= nil)
+end
+
+-- Prompt cuma nyala pas relevan (F/G/E beda tombol; dua prompt G jauhan,
+-- satu di luar satu di dalem box):
+--   F (naik)        : jok supir kosong, nggak lagi goreng, nggak ada yang duduk jualan
+--   G (duduk goreng): bangku luar, cuma ada pas lapak buka; mati kalau udah didudukin
+--   G (duduk jaga)  : bangku di dalem box, cuma pas lapak buka (pintu kebuka)
+--   E (goreng)      : cuma ada pas lapak buka; nyala-matinya diatur FryService
 local function refreshPrompts(v)
-	local sellerSeated = v.kursi ~= nil and v.kursi.Occupant ~= nil
-	v.naikPrompt.Enabled = v.kemudi.Occupant == nil and not frying(v) and not sellerSeated
+	v.naikPrompt.Enabled = v.kemudi.Occupant == nil and not frying(v) and not sellerSeated(v)
 	if v.dudukPrompt then
-		v.dudukPrompt.Enabled = not sellerSeated
+		v.dudukPrompt.Enabled = v.kursi.Occupant == nil
+	end
+	if v.jagaPrompt then
+		v.jagaPrompt.Enabled = v.lapak ~= nil and v.kursiJaga.Occupant == nil
+	end
+end
+
+-- Pintu mau ditutup: yang masih di dalem box dipindahin ke belakang gerobak
+-- (biar nggak kekunci & ikut kebawa jalan).
+local function evictFromBox(v)
+	if not v.ruang then
+		return
+	end
+	local exit = v.ruang.CFrame * CFrame.new(0, 0, v.ruang.Size.Z / 2 + 3.5)
+	for _, other in ipairs(Players:GetPlayers()) do
+		local character = other.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local p = v.ruang.CFrame:PointToObjectSpace(root.Position)
+			local half = v.ruang.Size / 2
+			if math.abs(p.X) <= half.X and math.abs(p.Y) <= half.Y and math.abs(p.Z) <= half.Z then
+				character:PivotTo(CFrame.new(exit.Position) * (root.CFrame - root.Position))
+			end
+		end
 	end
 end
 
@@ -240,6 +275,9 @@ local function openStall(player, v)
 	end
 
 	lapak.Parent = v.model -- ikut keapus kalau kendaraannya dihapus
+	if v.penghalang then
+		v.penghalang.CanCollide = false -- pintu belakang kebuka, box bisa dimasukin
+	end
 	v.model:SetAttribute("LapakBuka", true)
 	refreshPrompts(v)
 end
@@ -251,6 +289,13 @@ local function closeStall(v)
 	end
 	if v.kursi then
 		ejectFrom(v.kursi)
+	end
+	if v.kursiJaga then
+		ejectFrom(v.kursiJaga)
+	end
+	evictFromBox(v)
+	if v.penghalang then
+		v.penghalang.CanCollide = true
 	end
 	v.lapak:Destroy()
 	v.lapak, v.wajan, v.kursi, v.dudukPrompt = nil, nil, nil, nil
@@ -285,8 +330,12 @@ local function spawnFor(player, info)
 		gerak = chassis:FindFirstChild("Gerak"),
 		arah = chassis:FindFirstChild("Arah"),
 		naikPrompt = kemudi:FindFirstChild("NaikPrompt", true),
+		kursiJaga = model:FindFirstChild("KursiJaga", true),
+		penghalang = model:FindFirstChild("PenghalangPintu"),
+		ruang = model:FindFirstChild("RuangBox"),
 		lapakTemplate = info.lapak and TEMPLATES:FindFirstChild(info.lapak),
 	}
+	v.jagaPrompt = v.kursiJaga and v.kursiJaga:FindFirstChild("JagaPrompt", true)
 	if info.lapak and not v.lapakTemplate then
 		warn(("[KendaraanService] Template lapak %s nggak ada di ServerStorage.Kendaraan"):format(info.lapak))
 	end
@@ -304,10 +353,21 @@ local function spawnFor(player, info)
 
 	-- Naik (F) = tutup lapak dulu (kalau kebuka), baru duduk di jok.
 	sitPrompt(player, v.naikPrompt, kemudi, function()
-		return not frying(v) and not (v.kursi and v.kursi.Occupant)
+		return not frying(v) and not sellerSeated(v)
 	end, function()
 		closeStall(v)
 	end)
+	-- Bangku jaga di dalem box: cuma bisa didudukin pas lapak buka.
+	if v.kursiJaga and v.jagaPrompt then
+		sitPrompt(player, v.jagaPrompt, v.kursiJaga, function()
+			return v.lapak ~= nil
+		end)
+		guardSeat(player, v.kursiJaga, function()
+			refreshPrompts(v)
+		end, function()
+			refreshPrompts(v)
+		end)
+	end
 	guardSeat(player, kemudi, function()
 		if v.lapak then
 			closeStall(v) -- jaga-jaga: nggak boleh nyetir selama lapak kebuka

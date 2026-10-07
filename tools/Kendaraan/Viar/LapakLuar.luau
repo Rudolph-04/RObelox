@@ -1,6 +1,7 @@
 --[[
 	Lapak luar: meja goreng + bangku plastik yang muncul di SISI KIRI LUAR
-	gerobak (di bawah panel yang keangkat jadi peneduh) pas buka lapak.
+	gerobak (di bawah panel yang keangkat jadi peneduh) pas buka lapak, plus
+	tangga lipat di belakang buat masuk ke box lewat pintu belakang.
 	Goreng di udara terbuka, kayak tukang gorengan pinggir jalan.
 
 	Ini template terpisah (ServerStorage.Kendaraan.ViarLapak), BUKAN bagian
@@ -112,15 +113,28 @@ local function bangku(m)
 	seat.CanCollide = false
 	seat.Parent = m
 	-- Jangkauan pendek + harus keliatan langsung: cuma muncul kalau beneran deket bangku.
-	local duduk = D.prompt(seat, "DudukPrompt", "Duduk Jualan", "Bangku", Enum.KeyCode.G, Enum.KeyCode.ButtonX, 5)
+	local duduk = D.prompt(seat, "DudukPrompt", "Duduk Goreng", "Bangku", Enum.KeyCode.G, Enum.KeyCode.ButtonX, 5)
 	duduk.RequiresLineOfSight = true
 end
 
--- Yang boleh ditabrak orang: meja, bangku, tabung gas. Sisanya tembus.
+local function tangga(m)
+	-- Tangga lipat aluminium di belakang bumper, buat naik ke pintu belakang box.
+	-- Dua anak tangga (0.8 & 1.6), terus satu langkah lagi ke lantai box.
+	local z0 = D.BOX_BELAKANG + 0.25
+	for _, step in ipairs({ { top = 1.6, z = z0 + 0.35 }, { top = 0.8, z = z0 + 1.05 } }) do
+		box(m, "AnakTangga", V3(1.8, 0.12, 0.7), L(0, step.top - 0.06, step.z), D.ALU, M.DiamondPlate)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		tube(m, "RangkaTangga", P(sx * 0.95, 0, z0 + 1.5), P(sx * 0.95, 1.6, z0 + 0.05), 0.1, D.ALU, M.Metal)
+	end
+end
+
+-- Yang boleh ditabrak orang: meja, bangku, tangga, tabung gas. Sisanya tembus.
 local SOLID = {
 	PapanMeja = true,
 	KakiMeja = true,
 	DudukanBangku = true,
+	AnakTangga = true,
 	KakiBangku = true,
 	TabungGas = true,
 }
@@ -136,6 +150,7 @@ return function()
 	m.PrimaryPart = dasar
 	mejaGoreng(m)
 	bangku(m)
+	tangga(m)
 
 	for _, p in ipairs(m:GetDescendants()) do
 		if p:IsA("BasePart") then

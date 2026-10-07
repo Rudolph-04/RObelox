@@ -46,6 +46,11 @@ D.RANGKA = 0.22 -- tebal pipa kotak rangka box
 D.PANEL = 0.1 -- tebal panel dinding
 D.MASUK = 0.06 -- panel dinding masuk segini dari muka luar rangka
 
+-- Pintu belakang 2 daun (jalan masuk ke box). Tingginya muat avatar R15
+-- (~5.2 stud) berdiri.
+D.PINTU_W = 2.6
+D.PINTU_TOP = D.BED_TOP + 5.2
+
 -- Counter jualan di sisi kiri dalem box (panel angkat ada di atasnya).
 D.COUNTER_TOP = D.BED_TOP + 1.55
 D.COUNTER_DALAM = -0.54 -- X tepi counter yang ngadep penjual

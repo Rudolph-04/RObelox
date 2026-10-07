@@ -60,20 +60,25 @@ konsep lokasi/cabang, bukan keliling.
   logo/merek asli; id internalnya masih `Viar`).
   - Motor depan: tangki bensin, jok, stang + 2 spion, lampu bulat, shock
     depan keliatan, pijakan kaki. Tangan avatar megang stang (IKControl).
-  - Box: rangka aluminium, atap kabin melengkung di atas pengendara, papan
-    nama di atas, pintu belakang, sepatbor + karet lumpur, lampu + plat.
-  - **Panel samping kiri** ketutup pas nyetir, kebuka ke atas jadi kanopi
-    (TweenService, disangga 2 piston) pas diparkir di TITIK JUALAN.
-  - Dalem box: counter + **kompor tanam** (wajan nancep di meja), etalase
-    kaca, tirisan, baskom tahu mentah, stok, tabung gas, lampu TL.
-  - Naik: **F** di jok. Nyetir: W/S gas/mundur, A/D belok, Spasi turun
-    (HP: stik + tombol lompat). Selalu tegak, nggak bisa kebalik.
-  - Goreng cuma bisa kalau kendaraan diem di TITIK JUALAN dan nggak ada yang
-    nyetir. Boleh sambil **berdiri** di depan counter atau **duduk** di kursi
-    penjual di dalem box (**G**). Selama goreng kendaraan dikunci.
-  - Prompt cuma muncul pas relevan: F (jarak 6) mati selama nyetir/goreng/
-    duduk jualan; G (jarak 5, harus keliatan langsung) & E (jarak 5) cuma
-    nyala pas lapak buka.
+  - Box (tempat stok + etalase): rangka aluminium, atap kabin melengkung di
+    atas pengendara, papan nama "TAHU JURAGAN" di atas (satu-satunya),
+    pintu belakang, sepatbor + karet lumpur, lampu + plat. Dalemnya counter,
+    etalase kaca, tirisan, baskom tahu mentah, stok, lampu TL.
+  - **Buka Lapak** (otomatis pas kendaraan diem di TITIK JUALAN tanpa supir):
+    panel samping kiri keangkat jadi peneduh (TweenService, disangga 2
+    piston), terus di sisi luar muncul **meja goreng** setinggi pinggang
+    (kompor + wajan, api keliatan, tabung gas di tanah) + **bangku plastik**
+    di tanah. Lapak luar ini anchored & nggak di-weld ke kendaraan;
+    kendaraannya dikunci selama lapak buka. Depan meja & etalase dikosongin
+    buat pembeli nanti.
+  - **Tutup Lapak**: pencet **F** (naik) → meja + bangku ilang, panel nutup,
+    baru duduk di jok. Nggak bisa selama lagi goreng.
+  - Nyetir: W/S gas/mundur, A/D belok, Spasi turun (HP: stik + tombol
+    lompat). Selalu tegak, nggak bisa kebalik.
+  - Goreng (**E** di wajan) sambil **berdiri** di samping meja atau **duduk**
+    di bangku (**G**). Prompt cuma muncul pas relevan: F (jarak 6) mati
+    selama nyetir/goreng/duduk jualan; G (jarak 5, harus keliatan langsung)
+    & E (jarak 5) cuma ada pas lapak buka.
   - Cuma pemiliknya yang bisa naik/duduk/goreng di kendaraannya.
   - **Depan Sekolah, Terminal, Alun-alun**: plot cabang yang masih
     terkunci (gerbang/palang ditutup + papan "Segera dibuka"), disiapin
@@ -132,6 +137,7 @@ tools/                    -> masuk ke ServerStorage.Tools; BUKAN script game,
       init.luau              -> rakit semua bagian + collider
       Dasar.luau             -> ukuran bareng + helper
       Motor.luau, Bak.luau, Box.luau, Lapak.luau -> per bagian
+      LapakLuar.luau         -> meja goreng + bangku -> ServerStorage.Kendaraan.ViarLapak
     Wajan.luau, Roda.luau  -> bagian yang dipake ulang semua kendaraan
     Rig.luau               -> jadiin model kendaraan bisa jalan (fisika, sambungan)
 ```

@@ -1,7 +1,10 @@
 --[[
-	Gerobak motor roda tiga + box jualan "TAHU JURAGAN". Hasilnya template
-	ServerStorage.Kendaraan.Viar (diganti kalau udah ada), yang di-clone
-	KendaraanService tiap player pencet "Keluarin" di menu Kendaraan.
+	Gerobak motor roda tiga + box jualan "TAHU JURAGAN". Hasilnya 2 template
+	(diganti kalau udah ada) di ServerStorage.Kendaraan:
+	  Viar      -> kendaraannya, di-clone KendaraanService tiap player pencet
+	               "Keluarin" di menu Kendaraan
+	  ViarLapak -> meja goreng + bangku di luar gerobak, di-clone pas buka
+	               lapak & dihapus pas tutup (nggak di-weld ke kendaraan)
 	("Viar" cuma nama internal/id; di dalem game nggak ada tulisan merek.)
 
 	Jalanin (Command Bar, mode Edit), terus Save place:
@@ -13,11 +16,12 @@
 	  Bak    -> lantai, rangka bawah, as belakang, sepatbor, lampu, plat
 	  Box    -> rangka aluminium, dinding, atap, papan nama, atap kabin,
 	            panel samping angkat + piston
-	  Lapak  -> isi box: counter + kompor tanam + wajan, etalase, kursi, stok
+	  Lapak  -> isi box: counter, etalase, tirisan, stok
+	  LapakLuar -> template ViarLapak: meja goreng, kompor + wajan, gas, bangku
 
 	Nama yang dipake script (jangan diganti):
 	  Chassis (PrimaryPart), Kemudi (VehicleSeat) + NaikPrompt,
-	  KursiGoreng (Seat) + DudukPrompt, Wajan (lihat Wajan.luau),
+	  KursiGoreng (Seat) + DudukPrompt & Wajan (di ViarLapak, lihat Wajan.luau),
 	  PeganganKiri/PeganganKanan (attachment di handel), SikuKiri/SikuKanan
 	  (attachment di Kemudi), Motor6D EngselPanel & Piston (lihat Box.luau),
 	  PangkalPiston<i> (attachment di Chassis), atribut model "Kendaraan" = id
@@ -25,6 +29,7 @@
 
 	Cek permukaan numpuk (bikin kedip) abis ngubah apa-apa:
 	  print(require(game.ServerStorage.Tools.CekTumpuk)(game.ServerStorage.Kendaraan.Viar))
+	  print(require(game.ServerStorage.Tools.CekTumpuk)(game.ServerStorage.Kendaraan.ViarLapak))
 ]]
 
 local ServerStorage = game:GetService("ServerStorage")
@@ -34,6 +39,7 @@ local Motor = require(script.Motor)
 local Bak = require(script.Bak)
 local Box = require(script.Box)
 local Lapak = require(script.Lapak)
+local LapakLuar = require(script.LapakLuar)
 local Roda = require(script.Parent.Roda)
 local Rig = require(script.Parent.Rig)
 
@@ -49,9 +55,11 @@ return function()
 		folder.Name = "Kendaraan"
 		folder.Parent = ServerStorage
 	end
-	local old = folder:FindFirstChild("Viar")
-	if old then
-		old:Destroy()
+	for _, name in ipairs({ "Viar", "ViarLapak" }) do
+		local old = folder:FindFirstChild(name)
+		if old then
+			old:Destroy()
+		end
 	end
 
 	local viar = Instance.new("Model")
@@ -59,7 +67,7 @@ return function()
 	viar:SetAttribute("Kendaraan", "Viar")
 	viar.Parent = workspace -- sementara (CSG butuh DataModel)
 
-	-- ── COLLIDER (diatur Rig: nggak keliatan, tanpa gesekan) ────────
+	-- ── COLLIDER (diatur Rig: nggak keliatan, punya massa) ──────────
 	-- Atas Chassis = lantai box, jadi orang bisa berdiri di dalem box.
 	-- Box-nya sendiri visual doang, biar fisika nyetir tetep sama.
 	local zMid = (D.BOX_DEPAN + D.BOX_BELAKANG) / 2
@@ -129,11 +137,19 @@ return function()
 	})
 	viar.Parent = folder
 
-	local parts = 0
-	for _, p in ipairs(viar:GetDescendants()) do
-		if p:IsA("BasePart") then
-			parts += 1
+	-- ── LAPAK LUAR (template terpisah, nggak ikut Rig) ──────────────
+	local lapakLuar = LapakLuar()
+	lapakLuar.Name = "ViarLapak"
+	lapakLuar.Parent = folder
+
+	local function count(m)
+		local n = 0
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") then
+				n += 1
+			end
 		end
+		return n
 	end
-	return ("Template Viar ok (%d part)"):format(parts)
+	return ("Template Viar ok (%d part) + ViarLapak (%d part)"):format(count(viar), count(lapakLuar))
 end

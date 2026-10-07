@@ -12,7 +12,7 @@
 --   OwnerUserId  cuma pemilik kendaraan yang boleh goreng
 --   BisaJualan   false = kendaraan lagi nggak diparkir di titik jualan
 -- Selama goreng, script ini nyalain atribut "LagiGoreng" di wajan
--- (KendaraanService ngunci kendaraannya biar nggak bisa jalan).
+-- (KendaraanService nggak ngizinin lapak ditutup / kendaraan dinaikin).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")

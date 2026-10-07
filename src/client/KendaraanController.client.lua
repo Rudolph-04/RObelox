@@ -31,6 +31,10 @@ local kendaraanFolder = workspace:WaitForChild("Kendaraan")
 
 local HINT_RANGE = 14 -- jarak ke kendaraan sendiri buat nampilin petunjuk parkir
 local MAX_YAW_LEAD = 0.5 -- rad; target arah nggak boleh kabur jauh pas mentok tembok
+-- Di bawah ini (stud/detik) kendaraan dianggep berhenti. Abis diem/di-anchor,
+-- fisika suka nyisain kecepatan seuprit (misal +0.00001 ke depan); tanpa batas
+-- ini, pencet mundur dianggep "rem dulu" terus selamanya & kendaraan nggak gerak.
+local STOPPED_SPEED = 0.3
 local PANEL_TIME = 1.2 -- detik buka/tutup panel penuh
 local ALONG_X = CFrame.Angles(0, math.rad(90), 0) -- sumbu X silinder -> arah LookVector
 
@@ -98,16 +102,16 @@ local function drive(seat, state, dt)
 	local speed = chassis.AssemblyLinearVelocity:Dot(forward)
 	local throttle = seat.ThrottleFloat
 	if throttle > 0 then
-		if speed < 0 then
+		if speed < -STOPPED_SPEED then
 			speed = math.min(speed + stats.brake * dt, 0) -- lagi mundur: rem dulu
 		else
-			speed = math.min(speed + stats.accel * throttle * dt, stats.maxSpeed)
+			speed = math.min(math.max(speed, 0) + stats.accel * throttle * dt, stats.maxSpeed)
 		end
 	elseif throttle < 0 then
-		if speed > 0 then
+		if speed > STOPPED_SPEED then
 			speed = math.max(speed - stats.brake * dt, 0) -- lagi maju: rem dulu
 		else
-			speed = math.max(speed + stats.accel * throttle * dt, -stats.maxReverse)
+			speed = math.max(math.min(speed, 0) + stats.accel * throttle * dt, -stats.maxReverse)
 		end
 	else
 		speed = approachZero(speed, stats.coastDrag * dt)
@@ -425,17 +429,16 @@ local function hintText()
 
 	if getMyDrivingSeat() then
 		if inZone then
-			return "Udah di TITIK JUALAN! Berhenti, terus turun buat goreng tahu"
+			return "Udah di TITIK JUALAN! Berhenti, terus turun buat buka lapak"
 		end
 		return controlsText() .. "\nGoreng cuma bisa di TITIK JUALAN (Pasar)"
 	end
 
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local wajan = model:FindFirstChild("Wajan", true)
-	if root and wajan and (root.Position - chassis.Position).Magnitude < HINT_RANGE then
-		if not wajan:GetAttribute("LagiGoreng") and wajan:GetAttribute("BisaJualan") == false and not inZone then
-			return "Naik kendaraan, terus parkir di TITIK JUALAN (Pasar) buat goreng"
+	if root and (root.Position - chassis.Position).Magnitude < HINT_RANGE then
+		if model:GetAttribute("LapakBuka") ~= true and not inZone then
+			return "Naik kendaraan, terus parkir di TITIK JUALAN (Pasar) buat buka lapak"
 		end
 	end
 	return nil

@@ -59,11 +59,14 @@ local function rangka(m)
 	box(m, "AmbangBukaan", V3(F, F, INNER_Z2 - INNER_Z1), L(-(HALF - F / 2), D.COUNTER_TOP - F / 2, Z_MID), D.ALU, M.Metal)
 end
 
--- Strip tulisan nempel di muka luar dinding samping (sx = -1 kiri, 1 kanan).
+-- Strip nempel di muka luar dinding samping (sx = -1 kiri, 1 kanan),
+-- tulisannya opsional (text nil = strip polos).
 local function stripSamping(m, name, sx, y, h, text, bg, fg)
 	local x = sx * (HALF - D.MASUK / 2)
 	local s = box(m, name, V3(D.MASUK, h, INNER_Z2 - INNER_Z1), L(x, y, Z_MID), bg, M.SmoothPlastic)
-	Bantu.surfaceText(s, sx < 0 and Enum.NormalId.Left or Enum.NormalId.Right, text, fg, bg)
+	if text then
+		Bantu.surfaceText(s, sx < 0 and Enum.NormalId.Left or Enum.NormalId.Right, text, fg, bg)
+	end
 	return s
 end
 
@@ -79,13 +82,13 @@ local function dinding(m)
 	local counterH = D.COUNTER_TOP - F - D.BED_TOP
 	box(m, "DindingCounter", V3(D.PANEL, counterH, INNER_Z2 - INNER_Z1), L(-WALL_X, D.BED_TOP + counterH / 2, Z_MID), D.DINDING, M.SmoothPlastic)
 
-	-- Branding.
-	stripSamping(m, "StripNama", 1, WALL_TOP - 0.75, 1.1, "TAHU JURAGAN", D.MERAH, W.PUTIH)
+	-- Branding: nama "TAHU JURAGAN" cuma di papan atas; di badan box cuma
+	-- strip merah polos + harga.
+	stripSamping(m, "StripMerah", 1, WALL_TOP - 0.75, 0.35, nil, D.MERAH)
 	stripSamping(m, "StripHarga", 1, D.BED_TOP + 1.0, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
 	stripSamping(m, "StripHarga", -1, D.BED_TOP + 0.75, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
 	for _, z in ipairs({ ZF + D.MASUK / 2, ZB - D.MASUK / 2 }) do
-		local s = box(m, "StripNama", V3(innerX * 2, 0.8, D.MASUK), L(0, WALL_TOP - 0.6, z), D.MERAH, M.SmoothPlastic)
-		Bantu.surfaceText(s, z < 0 and Enum.NormalId.Front or Enum.NormalId.Back, "TAHU JURAGAN", W.PUTIH, D.MERAH)
+		box(m, "StripMerah", V3(innerX * 2, 0.35, D.MASUK), L(0, WALL_TOP - 0.75, z), D.MERAH, M.SmoothPlastic)
 	end
 
 	-- Pintu belakang (nongol dari dinding, segaris muka rangka).
@@ -149,13 +152,12 @@ local function panelSamping(viar, boxModel, gerak)
 	local teksDalam = Bantu.surfaceText(panel, Enum.NormalId.Right, "Tahu Goreng  •  Rp 500", RGB(150, 40, 25), nil, 30)
 	teksDalam:FindFirstChildOfClass("TextLabel").Rotation = 180
 
-	-- Muka luar: list atas-bawah, strip nama, gagang.
+	-- Muka luar: list atas-bawah, strip merah, gagang.
 	local outX = -(HALF - D.MASUK / 2)
 	for _, y in ipairs({ bottom + 0.06, WALL_TOP - 0.06 }) do
 		box(group, "ListPanel", V3(D.MASUK, 0.12, INNER_Z2 - INNER_Z1), L(outX, y, Z_MID), D.ALU, M.Metal)
 	end
-	local strip = box(group, "StripNama", V3(D.MASUK, 1.2, INNER_Z2 - INNER_Z1), L(outX, bottom + h * 0.55, Z_MID), D.MERAH, M.SmoothPlastic)
-	Bantu.surfaceText(strip, Enum.NormalId.Left, "TAHU JURAGAN", W.PUTIH, D.MERAH)
+	box(group, "StripMerah", V3(D.MASUK, 0.35, INNER_Z2 - INNER_Z1), L(outX, bottom + h * 0.55, Z_MID), D.MERAH, M.SmoothPlastic)
 	box(group, "GagangPanel", V3(0.08, 0.12, 1.2), L(-(HALF - D.MASUK) - 0.04, bottom + 0.35, Z_MID), W.KROM, M.Metal)
 
 	-- Muka dalem: lampu strip (jadi lampu kanopi pas kebuka).

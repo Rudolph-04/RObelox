@@ -7,14 +7,16 @@
 --
 -- Nyetirnya di client (KendaraanController) biar responsif: pas pemilik
 -- duduk di Kemudi, network owner dikasih ke dia. Server cuma ngatur:
---   - siapa boleh naik Kemudi / duduk di KursiGoreng (pemilik doang)
---   - atribut "BisaJualan" di wajan + "LapakBuka" di model: true kalau
---     kendaraan diem di dalem part bertag "TitikJualan" dan nggak ada yang
---     nyetir. FryService nolak goreng kalau false; client ngebuka panel
---     samping box (jadi kanopi) kalau true. Pemilik boleh goreng sambil
---     berdiri atau duduk di KursiGoreng (di dalem box).
---   - prompt Naik (F) & Duduk Jualan (G) nyala-mati (lihat refreshSellState)
---   - kendaraan dikunci (Anchored) selama wajan "LagiGoreng" (diset FryService)
+--   - siapa boleh naik Kemudi / duduk di bangku jualan (pemilik doang)
+--   - BUKA LAPAK otomatis pas kendaraan diem di dalem part bertag
+--     "TitikJualan" & nggak ada yang nyetir: template lapak luar
+--     (KendaraanConfig `lapak`, isinya meja goreng + wajan + bangku) di-clone
+--     ke sisi kiri kendaraan (anchored, nggak di-weld), atribut "LapakBuka"
+--     di model = true (client ngangkat panel jadi peneduh), kendaraan dikunci.
+--   - TUTUP LAPAK pas pemilik pencet Naik (F): lapak luar dihapus, panel
+--     nutup, kendaraan dilepas, baru dia didudukin di jok. Nggak bisa selama
+--     lagi goreng (atribut "LagiGoreng" di wajan, diset FryService).
+--   - prompt Naik (F) & Duduk Jualan (G) nyala-mati (lihat refreshPrompts)
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -35,7 +37,7 @@ local folder = Instance.new("Folder")
 folder.Name = "Kendaraan"
 folder.Parent = workspace
 
-local owned = {} -- [player] = { model, chassis, kemudi, kursi, wajan, gerak, arah, naikPrompt, dudukPrompt }
+local owned = {} -- [player] = { model, chassis, kemudi, gerak, arah, naikPrompt, lapakTemplate, + selama lapak buka: lapak, wajan, kursi, dudukPrompt }
 local lastSpawn = {} -- [player] = os.clock() terakhir keluarin kendaraan
 
 local function isInSellZone(position)
@@ -167,47 +169,96 @@ local function frying(v)
 	return v.wajan ~= nil and v.wajan:GetAttribute("LagiGoreng") == true
 end
 
--- Boleh jualan = diem di TITIK JUALAN & nggak ada yang nyetir. Selama goreng
--- (kendaraan dikunci) dianggep boleh, soalnya goreng cuma bisa mulai kalau udah boleh.
-local function canSellNow(v)
-	if v.chassis.Anchored then
-		return true
-	end
+-- Boleh buka lapak = diem di TITIK JUALAN & nggak ada yang nyetir.
+local function canOpen(v)
 	return v.kemudi.Occupant == nil
 		and v.chassis.AssemblyLinearVelocity.Magnitude < KendaraanConfig.PARKED_SPEED
 		and isInSellZone(v.chassis.Position)
 end
 
--- Satu tempat buat status jualan + prompt, biar nggak ada prompt yang nongol
--- pas nggak relevan (tombolnya beda semua, jadi nggak rebutan):
+-- Prompt cuma nyala pas relevan (tombolnya beda semua, jadi nggak rebutan):
 --   F (naik)  : jok supir kosong, nggak lagi goreng, nggak ada yang duduk jualan
---   G (duduk) : lapak buka & kursi jualan kosong
---   E (goreng): diatur FryService dari atribut BisaJualan di wajan
-local function refreshSellState(v)
-	local open = canSellNow(v)
-	if v.model:GetAttribute("LapakBuka") ~= open then
-		v.model:SetAttribute("LapakBuka", open)
-	end
-	if v.wajan and v.wajan:GetAttribute("BisaJualan") ~= open then
-		v.wajan:SetAttribute("BisaJualan", open)
-	end
+--   G (duduk) : cuma ada pas lapak buka; mati kalau bangkunya udah didudukin
+--   E (goreng): cuma ada pas lapak buka; nyala-matinya diatur FryService
+local function refreshPrompts(v)
 	local sellerSeated = v.kursi ~= nil and v.kursi.Occupant ~= nil
 	v.naikPrompt.Enabled = v.kemudi.Occupant == nil and not frying(v) and not sellerSeated
 	if v.dudukPrompt then
-		v.dudukPrompt.Enabled = open and not sellerSeated
+		v.dudukPrompt.Enabled = not sellerSeated
 	end
 end
 
-local function sitPrompt(player, prompt, seat, allowed)
+local function sitPrompt(player, prompt, seat, allowed, beforeSit)
 	prompt.Triggered:Connect(function(who)
 		if who ~= player or seat.Occupant or not allowed() then
 			return
 		end
 		local humanoid = getHumanoid(player)
 		if humanoid and humanoid.Health > 0 and not humanoid.SeatPart then
+			if beforeSit then
+				beforeSit()
+			end
 			seat:Sit(humanoid)
 		end
 	end)
+end
+
+-- Buka lapak: meja goreng + bangku muncul di sisi kiri kendaraan (posisinya
+-- diambil dari pivot kendaraan, dibikin rata air), kendaraan dikunci.
+local function openStall(player, v)
+	if v.lapak or not v.lapakTemplate then
+		return
+	end
+	hold(v)
+	v.chassis.Anchored = true
+
+	local lapak = v.lapakTemplate:Clone()
+	lapak.Name = "LapakLuar"
+	local pivot = v.model:GetPivot()
+	lapak:PivotTo(CFrame.new(pivot.Position) * yawOnly(pivot))
+	v.lapak = lapak
+	v.wajan = lapak:FindFirstChild("Wajan", true)
+	v.kursi = lapak:FindFirstChild("KursiGoreng", true)
+	v.dudukPrompt = v.kursi and v.kursi:FindFirstChild("DudukPrompt", true)
+
+	if v.wajan then
+		v.wajan:SetAttribute("OwnerUserId", player.UserId)
+		v.wajan:SetAttribute("BisaJualan", true)
+		v.wajan:GetAttributeChangedSignal("LagiGoreng"):Connect(function()
+			refreshPrompts(v)
+		end)
+	end
+	if v.kursi and v.dudukPrompt then
+		sitPrompt(player, v.dudukPrompt, v.kursi, function()
+			return v.lapak == lapak
+		end)
+		guardSeat(player, v.kursi, function()
+			refreshPrompts(v)
+		end, function()
+			refreshPrompts(v)
+		end)
+	end
+
+	lapak.Parent = v.model -- ikut keapus kalau kendaraannya dihapus
+	v.model:SetAttribute("LapakBuka", true)
+	refreshPrompts(v)
+end
+
+-- Tutup lapak (sebelum nyetir). Nggak bisa selama lagi goreng.
+local function closeStall(v)
+	if not v.lapak or frying(v) then
+		return
+	end
+	if v.kursi then
+		ejectFrom(v.kursi)
+	end
+	v.lapak:Destroy()
+	v.lapak, v.wajan, v.kursi, v.dudukPrompt = nil, nil, nil, nil
+	v.model:SetAttribute("LapakBuka", false)
+	v.chassis.Anchored = false
+	v.chassis:SetNetworkOwner(nil)
+	hold(v)
+	refreshPrompts(v)
 end
 
 local function spawnFor(player, info)
@@ -227,23 +278,19 @@ local function spawnFor(player, info)
 
 	local chassis = model.PrimaryPart
 	local kemudi = model:FindFirstChild("Kemudi")
-	local kursi = model:FindFirstChild("KursiGoreng")
 	local v = {
 		model = model,
 		chassis = chassis,
 		kemudi = kemudi,
-		kursi = kursi,
-		wajan = model:FindFirstChild("Wajan", true),
 		gerak = chassis:FindFirstChild("Gerak"),
 		arah = chassis:FindFirstChild("Arah"),
 		naikPrompt = kemudi:FindFirstChild("NaikPrompt", true),
-		dudukPrompt = kursi and kursi:FindFirstChild("DudukPrompt", true),
+		lapakTemplate = info.lapak and TEMPLATES:FindFirstChild(info.lapak),
 	}
-	model:SetAttribute("LapakBuka", false)
-	if v.wajan then
-		v.wajan:SetAttribute("OwnerUserId", player.UserId)
-		v.wajan:SetAttribute("BisaJualan", false)
+	if info.lapak and not v.lapakTemplate then
+		warn(("[KendaraanService] Template lapak %s nggak ada di ServerStorage.Kendaraan"):format(info.lapak))
 	end
+	model:SetAttribute("LapakBuka", false)
 	local tag = chassis:FindFirstChild("Pemilik", true)
 	if tag then
 		tag.Nama.Text = info.nama .. " " .. player.DisplayName
@@ -255,49 +302,30 @@ local function spawnFor(player, info)
 	chassis:SetNetworkOwner(nil)
 	owned[player] = v
 
+	-- Naik (F) = tutup lapak dulu (kalau kebuka), baru duduk di jok.
 	sitPrompt(player, v.naikPrompt, kemudi, function()
-		return not frying(v) and not (kursi and kursi.Occupant)
+		return not frying(v) and not (v.kursi and v.kursi.Occupant)
+	end, function()
+		closeStall(v)
 	end)
 	guardSeat(player, kemudi, function()
+		if v.lapak then
+			closeStall(v) -- jaga-jaga: nggak boleh nyetir selama lapak kebuka
+		end
 		if chassis.Anchored then
-			ejectFrom(kemudi) -- lagi goreng, nggak bisa jalan
+			ejectFrom(kemudi) -- lapak nggak bisa ditutup (lagi goreng)
 			return
 		end
 		chassis:SetNetworkOwner(player)
-		refreshSellState(v) -- langsung tutup lapak, jangan nunggu cek berkala
+		refreshPrompts(v)
 	end, function()
 		hold(v)
 		if not chassis.Anchored then
 			chassis:SetNetworkOwner(nil)
 		end
-		refreshSellState(v)
+		refreshPrompts(v)
 	end)
-
-	if kursi and v.dudukPrompt then
-		-- Duduk jualan cuma pas lapak buka (sama kayak prompt-nya); goreng
-		-- sambil berdiri juga tetep boleh.
-		sitPrompt(player, v.dudukPrompt, kursi, function()
-			return model:GetAttribute("LapakBuka") == true
-		end)
-		guardSeat(player, kursi, function()
-			refreshSellState(v)
-		end, function()
-			refreshSellState(v)
-		end)
-	end
-
-	if v.wajan then
-		v.wajan:GetAttributeChangedSignal("LagiGoreng"):Connect(function()
-			local isFrying = frying(v)
-			hold(v)
-			chassis.Anchored = isFrying
-			if not isFrying then
-				chassis:SetNetworkOwner(nil)
-			end
-			refreshSellState(v)
-		end)
-	end
-	refreshSellState(v)
+	refreshPrompts(v)
 	return true
 end
 
@@ -312,7 +340,7 @@ Remotes.SpawnKendaraan.OnServerEvent:Connect(function(player, id)
 		return
 	end
 	local current = owned[player]
-	if current and current.wajan and current.wajan:GetAttribute("LagiGoreng") then
+	if current and frying(current) then
 		Remotes.InfoKendaraan:FireClient(player, "Lagi goreng! Angkat tahunya dulu.", false)
 		return
 	end
@@ -329,22 +357,21 @@ Players.PlayerRemoving:Connect(function(player)
 	lastSpawn[player] = nil
 end)
 
--- Cek berkala: boleh jualan di sini? jatoh dari map?
+-- Cek berkala: udah diem di titik jualan (buka lapak)? jatoh dari map?
 while true do
 	task.wait(CHECK_INTERVAL)
 	for player, v in pairs(owned) do
-		if v.model.Parent then
-			local position = v.chassis.Position
-			if position.Y < FALL_LIMIT_Y and v.kemudi.Occupant == nil then
+		if v.model.Parent and not v.lapak then
+			if v.chassis.Position.Y < FALL_LIMIT_Y and v.kemudi.Occupant == nil then
 				v.chassis.Anchored = true
 				v.model:PivotTo(findSpawnCFrame(player, v))
 				v.chassis.AssemblyLinearVelocity = Vector3.zero
 				hold(v)
 				v.chassis.Anchored = false
 				v.chassis:SetNetworkOwner(nil)
+			elseif canOpen(v) then
+				openStall(player, v)
 			end
-
-			refreshSellState(v)
 		end
 	end
 end

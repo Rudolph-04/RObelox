@@ -17,6 +17,7 @@ KendaraanConfig.DAFTAR = {
 		nama = "Gerobak Motor",
 		deskripsi = "Motor roda tiga, box jualan di belakang (panelnya kebuka jadi lapak).",
 		template = "Viar", -- ServerStorage.Kendaraan.<template>
+		lapak = "ViarLapak", -- meja goreng + bangku yang muncul pas buka lapak
 
 		maxSpeed = 30, -- maju, ~38 km/jam
 		maxReverse = 10,

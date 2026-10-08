@@ -96,12 +96,10 @@ local function dinding(m)
 	local counterH = D.COUNTER_TOP - F - D.BED_TOP
 	box(m, "DindingCounter", V3(D.PANEL, counterH, INNER_Z2 - INNER_Z1), L(-WALL_X, D.BED_TOP + counterH / 2, Z_MID), D.DINDING, M.SmoothPlastic)
 
-	-- Branding: nama "TAHU JURAGAN" cuma di papan atas; di badan box cuma
-	-- strip merah polos (di atas pintu belakang) + harga.
+	-- Branding: nama "TAHU JURAGAN" cuma di papan atas. Harga cuma di kain
+	-- meja lapak luar (keliatan pas jualan), badan box polos.
 	local stripY = WALL_TOP - 0.28
 	stripSamping(m, "StripMerah", 1, stripY, 0.35, nil, D.MERAH)
-	stripSamping(m, "StripHarga", 1, D.BED_TOP + 1.0, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
-	stripSamping(m, "StripHarga", -1, D.BED_TOP + 0.75, 0.7, "Tahu Goreng  •  Rp 500", D.KUNING, RGB(120, 40, 20))
 	for _, z in ipairs({ ZF + D.MASUK / 2, ZB - D.MASUK / 2 }) do
 		box(m, "StripMerah", V3(innerX * 2, 0.35, D.MASUK), L(0, stripY, z), D.MERAH, M.SmoothPlastic)
 	end
@@ -176,9 +174,6 @@ local function panelSamping(viar, boxModel, gerak)
 	local h = WALL_TOP - bottom
 	local x = -WALL_X
 	local panel = box(group, "PanelLuar", V3(D.PANEL, h, INNER_Z2 - INNER_Z1), L(x, bottom + h / 2, Z_MID), D.DINDING, M.SmoothPlastic)
-	-- Tulisan di muka dalem diputer 180°: kebacanya pas panel kebuka (dari bawah kanopi).
-	local teksDalam = Bantu.surfaceText(panel, Enum.NormalId.Right, "Tahu Goreng  •  Rp 500", RGB(150, 40, 25), nil, 30)
-	teksDalam:FindFirstChildOfClass("TextLabel").Rotation = 180
 
 	-- Muka luar: list atas-bawah, strip merah, gagang.
 	local outX = -(HALF - D.MASUK / 2)

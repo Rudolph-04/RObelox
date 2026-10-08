@@ -13,6 +13,14 @@
 --   BisaJualan   false = kendaraan lagi nggak diparkir di titik jualan
 -- Selama goreng, script ini nyalain atribut "LagiGoreng" di wajan
 -- (KendaraanService nggak ngizinin lapak ditutup / kendaraan dinaikin).
+--
+-- Tahu yang diangkat diserahin ke Antrean: dikasih ke pembeli NPC terdepan,
+-- masuk etalase, atau dijual murah kalau etalase penuh. Wajan di luar lapak
+-- (nggak ada pembeli) tetep dibayar langsung kayak dulu.
+--
+-- Animasi masak: selama goreng, karakter dikasih sutil di tangan kanan +
+-- atribut "LagiGoreng" & "TitikWajan" (Vector3). Gerakan tangannya dihitung
+-- tiap client (MasakAnimasi.client.lua), jadi nggak perlu upload animasi.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -22,6 +30,7 @@ local TweenService = game:GetService("TweenService")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Remotes"))
 local FryConfig = require(ReplicatedStorage:WaitForChild("FryConfig"))
+local Antrean = require(script.Parent:WaitForChild("Antrean"))
 
 local WOK_TAG = "Wajan"
 local TAHU_PER_BATCH = 5
@@ -51,7 +60,7 @@ local function progressAt(session, serverTime)
 	return math.clamp((serverTime - session.startTime) / FryConfig.DURATION, 0, 1)
 end
 
--- Tahu bulat kecil-kecil yang ngambang di minyak.
+-- Potongan tahu kotak yang ngambang di minyak (kotak, biar keliatan pas dibalik).
 local function spawnTahu(wok)
 	local oil = wok:FindFirstChild("Minyak")
 	local folder = Instance.new("Folder")
@@ -62,24 +71,24 @@ local function spawnTahu(wok)
 	-- Ukuran & jarak ngikutin lebar minyak (wajan di kendaraan lebih kecil).
 	local radius = oil.Size.Z * 0.25
 	local size = math.clamp(oil.Size.Z * 0.24, 0.4, 0.6)
+	local tebal = size * 0.6
 	local top = oil.Position.Y + oil.Size.X / 2
 	for i = 1, TAHU_PER_BATCH do
 		local angle = (i / TAHU_PER_BATCH) * math.pi * 2
 		local tahu = Instance.new("Part")
 		tahu.Name = "Tahu"
-		tahu.Shape = Enum.PartType.Ball
-		tahu.Size = Vector3.new(size, size, size)
+		tahu.Size = Vector3.new(size, tebal, size)
 		tahu.Material = Enum.Material.SmoothPlastic
 		tahu.Color = FryConfig.TAHU_RAW
 		tahu.Anchored = true
 		tahu.CanCollide = false
 		tahu.CanQuery = false
 		tahu.CanTouch = false
-		tahu.Position = Vector3.new(
+		tahu.CFrame = CFrame.new(
 			oil.Position.X + math.cos(angle) * radius,
-			top + size * 0.3, -- setengah kecelup
+			top + tebal * 0.15, -- sebagian besar kecelup
 			oil.Position.Z + math.sin(angle) * radius
-		)
+		) * CFrame.Angles(0, angle * 1.7, 0)
 		tahu.Parent = folder
 		table.insert(tahuList, tahu)
 	end
@@ -109,6 +118,73 @@ local function setOilEffect(wok, effectName, enabled)
 	end
 end
 
+-- Sutil di tangan kanan (R15). Massless & nggak nabrak, jadi nggak ganggu gerak.
+local function pasangSutil(character)
+	local hand = character and character:FindFirstChild("RightHand")
+	if not hand then
+		return nil -- R6 / karakter belum lengkap: goreng tetep jalan, cuma tanpa sutil
+	end
+	local function part(name, size, color, material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = material
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		p.CastShadow = false
+		return p
+	end
+	local function weld(part0, part1, c0)
+		local w = Instance.new("Weld")
+		w.Part0 = part0
+		w.Part1 = part1
+		w.C0 = c0
+		w.Parent = part1
+	end
+
+	local sutil = Instance.new("Model")
+	sutil.Name = "Sutil"
+	-- Gagang kayu digenggam, ujungnya keluar ke bawah tangan (sumbu -Y tangan).
+	local gagang = part("Gagang", Vector3.new(0.12, 1.0, 0.12), Color3.fromRGB(110, 75, 45), Enum.Material.Wood)
+	gagang.Parent = sutil
+	weld(hand, gagang, CFrame.new(0, -0.35, 0))
+	-- Daun sutil: pelat besi agak nekuk, buat bolak-balik tahu.
+	local daun = part("Daun", Vector3.new(0.45, 0.5, 0.04), Color3.fromRGB(150, 150, 155), Enum.Material.Metal)
+	daun.Parent = sutil
+	weld(gagang, daun, CFrame.new(0, -0.7, -0.08) * CFrame.Angles(math.rad(20), 0, 0))
+	local ujung = Instance.new("Attachment")
+	ujung.Name = "Ujung"
+	ujung.Position = Vector3.new(0, -0.25, 0)
+	ujung.Parent = daun
+	sutil.Parent = character
+	return sutil
+end
+
+local function mulaiAnimasi(player, session)
+	local character = player.Character
+	if not character then
+		return
+	end
+	session.character = character
+	session.sutil = pasangSutil(character)
+	local oil = session.wok:FindFirstChild("Minyak")
+	character:SetAttribute("TitikWajan", oil.Position + Vector3.new(0, oil.Size.X / 2, 0))
+	character:SetAttribute("LagiGoreng", true)
+end
+
+local function stopAnimasi(session)
+	if session.sutil then
+		session.sutil:Destroy()
+	end
+	if session.character then
+		session.character:SetAttribute("LagiGoreng", nil)
+		session.character:SetAttribute("TitikWajan", nil)
+	end
+end
+
 local function endSession(player, session)
 	sessions[player] = nil
 	busyWoks[session.wok] = nil
@@ -117,6 +193,7 @@ local function endSession(player, session)
 	setOilEffect(session.wok, "Gelembung", false)
 	liftTahuVisual(session.tahuFolder, session.tahuList)
 	session.wok:SetAttribute("LagiGoreng", false)
+	stopAnimasi(session)
 
 	coolingWoks[session.wok] = true
 	refreshPrompt(session.wok, session.prompt)
@@ -134,20 +211,28 @@ local function finish(player, session, progress)
 
 	local quality = FryConfig.qualityAt(progress)
 	local result = FryConfig.RESULTS[quality]
-	local total = result.pay + result.tip
 
-	local uang = getUang(player)
-	if uang then
-		uang.Value += total
+	-- Wajan di lapak: Antrean yang bayar (pembeli / etalase). Selain itu bayar langsung.
+	local pay, tip, catatan
+	local info = Antrean.serahkan(session.wok, player, quality)
+	if info then
+		pay, tip, catatan = info.pay, info.tip, info.catatan
+	else
+		pay, tip = result.pay, result.tip
+		local uang = getUang(player)
+		if uang then
+			uang.Value += pay + tip
+		end
 	end
 
 	Remotes.FryResult:FireClient(player, {
 		quality = quality,
 		label = result.label,
-		pay = result.pay,
-		tip = result.tip,
-		total = total,
+		pay = pay,
+		tip = tip,
+		total = pay + tip,
 		progress = progress,
+		catatan = catatan,
 	})
 end
 
@@ -169,6 +254,7 @@ local function startFrying(player, wok, prompt)
 	busyWoks[wok] = player
 	prompt.Enabled = false
 	setOilEffect(wok, "Gelembung", true)
+	mulaiAnimasi(player, session)
 
 	-- Visual di dunia (keliatan semua player): warna tahu + asap pas gosong.
 	local gosongStart = FryConfig.gosongStart()

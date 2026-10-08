@@ -58,7 +58,6 @@ local function etalase(lapak)
 	local kaca = box(m, "KacaEtalase", V3(w - 0.1, h, l - 0.1), L(x, bottom + h / 2, z), RGB(200, 230, 240), M.Glass, {
 		Transparency = 0.6,
 	})
-	Bantu.surfaceText(kaca, Enum.NormalId.Left, "TAHU", D.MERAH, nil, 40)
 	for _, dx in ipairs({ -1, 1 }) do
 		for _, dz in ipairs({ -1, 1 }) do
 			box(m, "TiangEtalase", V3(0.1, h, 0.1), L(x + dx * (w / 2 - 0.05), bottom + h / 2, z + dz * (l / 2 - 0.05)), D.ALU, M.Metal)

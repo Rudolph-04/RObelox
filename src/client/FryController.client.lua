@@ -237,7 +237,7 @@ local resultPop = Instance.new("CanvasGroup")
 resultPop.Name = "Result"
 resultPop.AnchorPoint = Vector2.new(0.5, 1)
 resultPop.Position = UDim2.new(0.5, 0, 1, -(BOTTOM_MARGIN + PANEL_HEIGHT + 16))
-resultPop.Size = UDim2.fromOffset(420, 90)
+resultPop.Size = UDim2.fromOffset(420, 110)
 resultPop.BackgroundTransparency = 1
 resultPop.GroupTransparency = 1
 resultPop.Visible = false
@@ -265,6 +265,17 @@ local resultReward = makeLabel({
 	Parent = resultPop,
 })
 addStroke(resultReward, DARK, 2)
+
+-- Keterangan kecil dari server (masuk etalase, kembalian, dll). Kosong = ilang.
+local resultNote = makeLabel({
+	Name = "Catatan",
+	Position = UDim2.fromOffset(0, 84),
+	Size = UDim2.new(1, 0, 0, 22),
+	Font = Enum.Font.GothamBold,
+	TextSize = 16,
+	Parent = resultPop,
+})
+addStroke(resultNote, DARK, 2)
 
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
@@ -325,11 +336,10 @@ local function showResult(result)
 	resultTitle.Text = result.label
 	resultTitle.TextColor3 = RESULT_COLORS[result.quality] or WHITE
 	resultTitleStroke.Color = result.quality == "Gosong" and Color3.fromRGB(0, 0, 0) or DARK
-	if result.tip > 0 then
-		resultReward.Text = ("+%s  (tip +%s)"):format(formatRupiah(result.pay), formatRupiah(result.tip))
-	else
-		resultReward.Text = "+" .. formatRupiah(result.pay)
-	end
+	-- Uang yang beneran masuk (bayaran + kembalian yang nggak diambil pembeli).
+	local total = result.total or (result.pay + result.tip)
+	resultReward.Text = total > 0 and ("+" .. formatRupiah(total)) or ""
+	resultNote.Text = result.catatan or ""
 
 	resultPop.Visible = true
 	resultPop.GroupTransparency = 0
@@ -377,6 +387,9 @@ Remotes.FryStarted.OnClientEvent:Connect(function(serverStartTime, fryDuration)
 		Enum.KeyCode.ButtonX
 	)
 end)
+
+-- Tahu dari etalase dibeli pembeli NPC (bisa dateng kapan aja, bar goreng nggak diubah).
+Remotes.Penjualan.OnClientEvent:Connect(showResult)
 
 Remotes.FryResult.OnClientEvent:Connect(function(result)
 	active = false

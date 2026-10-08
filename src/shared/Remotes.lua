@@ -6,12 +6,13 @@
 --   FryResult   server -> client  (result)               hasil + reward dari server
 --   SpawnKendaraan  client -> server  (id)              minta keluarin kendaraan
 --   InfoKendaraan   server -> client  (pesan, berhasil)  jawaban buat menu kendaraan
+--   Penjualan   server -> client  (info)                 tahu dari etalase laku ke pembeli NPC
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "RemoteEvents"
-local EVENT_NAMES = { "FryStarted", "LiftTahu", "FryResult", "SpawnKendaraan", "InfoKendaraan" }
+local EVENT_NAMES = { "FryStarted", "LiftTahu", "FryResult", "SpawnKendaraan", "InfoKendaraan", "Penjualan" }
 
 local folder
 if RunService:IsServer() then

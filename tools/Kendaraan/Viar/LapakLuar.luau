@@ -23,6 +23,7 @@
 local D = require(script.Parent.Dasar)
 local Bantu = D.Bantu
 local Wajan = require(script.Parent.Parent.Wajan)
+local Pernak = require(script.Parent.Pernak)
 
 local V3 = Vector3.new
 local RGB = Color3.fromRGB
@@ -151,6 +152,7 @@ return function()
 	mejaGoreng(m)
 	bangku(m)
 	tangga(m)
+	Pernak(m, { meja = MEJA, mejaSize = MEJA_SIZE, wajanZ = WAJAN_Z, bangku = BANGKU })
 
 	for _, p in ipairs(m:GetDescendants()) do
 		if p:IsA("BasePart") then

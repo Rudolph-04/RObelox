@@ -18,6 +18,7 @@
 	            panel samping angkat + piston
 	  Lapak  -> isi box: counter, etalase, tirisan, stok
 	  LapakLuar -> template ViarLapak: meja goreng, kompor + wajan, gas, bangku
+	  Pernak -> hiasan lapak luar (ember tahu, peti, kaleng uang, bohlam, dll)
 
 	Nama yang dipake script (jangan diganti):
 	  Chassis (PrimaryPart), Kemudi (VehicleSeat) + NaikPrompt,

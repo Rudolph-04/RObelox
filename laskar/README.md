@@ -1,8 +1,17 @@
 # Laskar Kendang (prototipe)
 
 Judul sementara. Game ritme + strategi ala Patapon 3, tapi tema dan tampilannya
-sendiri: avatar Roblox lu jadi **panglima**, lu mukul **4 kendang** ngikutin
-ketukan, dan susunan pukulan jadi perintah buat pasukan kecil lu.
+sendiri: avatar Roblox lu jadi **panglima** (bawa golok) yang jalan bareng
+pasukan kecil bertopeng. Lu sendiri nggak keliatan: kayak "dewa" yang mukul
+**4 kendang** dari luar layar ngikutin ketukan, dan susunan pukulan jadi
+perintah buat pasukan. Kendangnya cuma muncul di layar (pinggir layar
+ngedenyut tiap ketukan, ikon kendang nongol tiap dipukul).
+
+Desain prajurit sengaja **bukan tiruan Patapon** (makhluk hitam bermata satu
+itu hak cipta Sony): badan bulet warna pasukan, topeng kayu, kaki-tangan lidi,
+topi per kelas (ikat kepala + bulu / helm / caping). Musuh: topeng hitam mata
+merah, bertanduk. Semua unit loncat kecil tiap ketukan, loncat + angkat tangan
+pas jawab perintah, jongkok pas TAHAN.
 
 Tujuan prototipe ini cuma satu: **ngetes mukul kendang di Roblox kerasa enak
 atau nggak.** Belum ada level/stat tree/loot.
@@ -10,6 +19,8 @@ atau nggak.** Belum ada level/stat tree/loot.
 Status (2026-11-07): udah kepasang & dites di Studio. Stage kebangun, MAJU
 berhenti pas di depan musuh, SERANG ngebunuh musuh, kombo naik 1-2-3-4.
 Belum dites: rasa mukul pake tangan (butuh suara diupload dulu).
+Abis tes itu: prajurit didesain ulang (topeng, animasi di client) dan kendang
+pindah ke layar. Bagian ini **belum dites**.
 
 ## Cara main
 
@@ -60,6 +71,7 @@ Bikin place **baru**, jangan di place Juragan Tahu.
 | `laskar/src/client/LaskarUI.lua` | StarterPlayer > StarterPlayerScripts > `LaskarUI` | ModuleScript |
 | `laskar/src/client/LaskarEfek.lua` | StarterPlayer > StarterPlayerScripts > `LaskarEfek` | ModuleScript |
 | `laskar/src/client/LaskarLatar.lua` | StarterPlayer > StarterPlayerScripts > `LaskarLatar` | ModuleScript |
+| `laskar/src/client/LaskarPrajurit.lua` | StarterPlayer > StarterPlayerScripts > `LaskarPrajurit` | ModuleScript |
 
 4. Stage dibangun sendiri pas Play (nggak ada builder yang perlu dijalanin).
 5. Playtest **sekali**: Play, coba MAJU sama SERANG sampai ketemu musuh
@@ -104,13 +116,17 @@ Cara pasang:
 - Stat lengkap + rumus damage dari tabel (rancang dulu di Excel/Sheets)
 - Peti per stage + tingkat kelangkaan perlengkapan
 - Musuh yang jalan/ngejar, bos
-- Animasi pukul kendang buat player lain (sekarang cuma keliatan di layar sendiri)
 
 ## Risiko yang udah ketauan
 
-- Udah kebukti: prajurit gerak lewat `Akar.CFrame` (part lain ikut lewat
-  WeldConstraint). Belum dicek mata: `Motor6D.Transform` di `RunService.Stepped`
-  beneran nimpa animasi bawaan (gerak tangan pas mukul).
+- Prajurit sekarang digambar client (LaskarPrajurit), server cuma gerakin
+  `Akar` nggak keliatan. Tes Studio tanggal 7 (gerak lewat `Akar.CFrame`)
+  masih berlaku buat posisi, tapi tampilan & animasi badan yang baru **belum
+  dites**.
+- Belum dicek mata: `Motor6D.Transform` di `RunService.Stepped` beneran nimpa
+  animasi bawaan (ayunan golok panglima).
+- Prajurit + latar = kira-kira 1000 part digerakin client tiap frame lewat
+  `workspace:BulkMoveTo`. Di PC harusnya aman, di HP kentang belum tentu.
 - Kontrol jalan dimatiin lewat `DevComputerMovementMode = Scriptable` di
   server. `PlayerModule` sekarang ada di `StarterPlayer`, bukan
   `PlayerScripts`, jadi `GetControls():Disable()` nggak bisa dipake lagi.

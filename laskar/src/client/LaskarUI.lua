@@ -1,6 +1,9 @@
 -- UI prototipe (ModuleScript di StarterPlayerScripts, dipake LaskarClient).
 --
 -- Isi layar:
+--   pinggir layar : bingkai putih yang ngedenyut tiap ketukan (emas pas pasukan jawab)
+--   kiri/kanan/atas: kendang "muncul" tiap dipukul. Nggak ada karakter yang
+--                   keliatan mukul: lu "dewa" yang ngatur dari luar layar.
 --   bawah tengah  : 4 pad kendang (bisa dipencet di HP) + 4 slot urutan pukulan
 --   atas kiri     : kombo + bar Semangat
 --   atas kanan    : daftar perintah (H buat buka/tutup) + kalibrasi + kamera
@@ -69,6 +72,46 @@ function UI.buat(pemain, onPad, onKalibrasi, onKamera)
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	})
 	local self = {}
+
+	-- ── BINGKAI DENYUT & KENDANG MUNCUL ─────────────────────────
+	local bingkai = buat("Frame", {
+		Name = "Bingkai",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Active = false,
+		Parent = gui,
+	})
+	local garisBingkai = buat("UIStroke", { Color = PUTIH, Thickness = 0, Transparency = 0.25, Parent = bingkai })
+
+	local POSISI_MUNCUL = {
+		DUNG = UDim2.fromScale(0.1, 0.48),
+		TAK = UDim2.fromScale(0.9, 0.48),
+		PAK = UDim2.fromScale(0.3, 0.2),
+		TUNG = UDim2.fromScale(0.7, 0.2),
+	}
+	local muncul = {}
+	for _, d in ipairs(C.DRUM) do
+		local grup = buat("CanvasGroup", {
+			Name = "Muncul" .. d.id,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = POSISI_MUNCUL[d.id] or UDim2.fromScale(0.5, 0.3),
+			Size = UDim2.fromOffset(104, 104),
+			BackgroundTransparency = 1,
+			GroupTransparency = 1,
+			Parent = gui,
+		})
+		buat("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = d.warna,
+			BackgroundTransparency = 0.08,
+			Parent = grup,
+		}, {
+			sudut(UDim.new(1, 0)),
+			buat("UIStroke", { Color = PUTIH, Thickness = 4 }),
+			teks({ Text = d.id .. "!", Size = UDim2.fromScale(1, 1), TextSize = 24, Font = Enum.Font.GothamBlack }),
+		})
+		muncul[d.id] = { grup = grup, skala = buat("UIScale", { Parent = grup }), token = 0 }
+	end
 
 	-- ── PAD KENDANG ─────────────────────────────────────────────
 	local PAD, JARAK = 74, 14
@@ -269,6 +312,19 @@ function UI.buat(pemain, onPad, onKalibrasi, onKamera)
 	local tokenPenilaian, tokenPesan = 0, 0
 
 	function self.pukul(id)
+		local q = muncul[id]
+		if q then
+			q.token += 1
+			local token = q.token
+			q.grup.GroupTransparency = 0
+			q.skala.Scale = 0.6
+			TweenService:Create(q.skala, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			task.delay(0.22, function()
+				if q.token == token then
+					TweenService:Create(q.grup, TweenInfo.new(0.25), { GroupTransparency = 1 }):Play()
+				end
+			end)
+		end
 		local p = pad[id]
 		if not p then
 			return
@@ -280,9 +336,13 @@ function UI.buat(pemain, onPad, onKalibrasi, onKamera)
 	end
 
 	function self.denyut(fase)
-		denyut.Color = fase == "jawab" and EMAS or PUTIH
+		local warna = fase == "jawab" and EMAS or PUTIH
+		denyut.Color = warna
 		denyut.Thickness = 3
 		TweenService:Create(denyut, TweenInfo.new(0.22), { Thickness = 0 }):Play()
+		garisBingkai.Color = warna
+		garisBingkai.Thickness = 12
+		TweenService:Create(garisBingkai, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Thickness = 0 }):Play()
 	end
 
 	function self.isiSlot(i, id)

@@ -59,8 +59,10 @@ local stage = { selesai = false, mulai = os.clock() }
 local ketukanDiproses = ketukanSekarang()
 
 -- ── UNIT ───────────────────────────────────────────────────────────
--- Unit prajurit/musuh: { model, akar, isi (bar), kelas, x, targetX, z, hp,
---   maxHp, hidup, arah (+1 ngadep +X / -1), lompat, serbu, cfTerakhir }
+-- Unit prajurit/musuh: { model (= akar), akar, isi (bar), kelas, x, targetX, z,
+--   hp, maxHp, hidup, arah (+1 ngadep +X / -1), cfTerakhir }
+-- Server cuma ngurus posisi & arah Akar. Badan, loncat, ayunan senjata dll
+-- digambar client (LaskarPrajurit) dari atribut Akar & model pasukan.
 -- Panglima: { panglima = true, kelas, targetX, character, hum, root }
 
 local function setBar(u)
@@ -127,41 +129,28 @@ local function hitung(penyerang, korban, pengali)
 	return math.max(1, math.floor(dmg + 0.5)), crit
 end
 
--- Gerak halus ke targetX + loncat/serbu. Cuma ngirim CFrame kalau berubah.
-local function gerakUnit(u, dt, sekarang, kaliLangkah)
+-- Gerak halus ke targetX. Cuma ngirim CFrame kalau berubah (diem = nggak ada kiriman).
+local function gerakUnit(u, dt, kaliLangkah)
 	if u.statis then
 		return
 	end
 	local dx = u.targetX - u.x
 	local maks = (u.kelas.kecepatan or 0) * dt * kaliLangkah -- musuh nggak punya kecepatan (diem di pos)
-	local jalan = math.abs(dx) > 0.05
-	if jalan then
-		u.x += math.clamp(dx, -maks, maks)
-	end
-	local y = TANAH
-	local lompat = sekarang - (u.lompat or -10)
-	if lompat < 0.25 then
-		y += math.sin(lompat / 0.25 * math.pi) * 0.45
-	end
-	if jalan then
-		y += math.abs(math.sin(sekarang * 12)) * 0.15
-	end
 	local hadap = u.arah or 1
-	if jalan then
+	if math.abs(dx) > 0.05 then
+		u.x += math.clamp(dx, -maks, maks)
 		hadap = dx > 0 and 1 or -1
 	end
-	local serbu = sekarang - (u.serbu or -10)
-	local dorong = serbu < 0.2 and math.sin(serbu / 0.2 * math.pi) * 0.8 * (u.arah or 1) or 0
-	local pos = V3(u.x + dorong, y, u.z)
+	local pos = V3(u.x, TANAH, u.z)
 	local cf = CFrame.lookAt(pos, pos + V3(hadap, 0, 0))
 	if cf ~= u.cfTerakhir then
 		u.cfTerakhir = cf
-		if u.model.Parent then
-			u.akar.CFrame = cf -- part lain ikut lewat weld
-		else
-			u.model:PivotTo(cf) -- belum di workspace: weld belum aktif, pindahin semua part
-		end
+		u.akar.CFrame = cf
 	end
+end
+
+local function tandaSerang(u)
+	u.akar:SetAttribute("SerangKe", (u.akar:GetAttribute("SerangKe") or 0) + 1)
 end
 
 -- ── MUSUH ──────────────────────────────────────────────────────────
@@ -207,15 +196,9 @@ local function bangunMusuh()
 	for _, g in ipairs(C.GELOMBANG) do
 		for i, id in ipairs(g.musuh) do
 			local kelas = C.MUSUH[id]
-			local model, akar, isi = Bentuk.prajurit({
-				senjata = kelas.senjata,
-				baju = Color3.fromRGB(110, 34, 36),
-				musuh = true,
-				warnaBar = Color3.fromRGB(220, 70, 60),
-			})
-			model.Name = id
+			local akar, isi = Bentuk.akar(id, Color3.fromRGB(110, 34, 36), true)
 			local e = {
-				model = model,
+				model = akar,
 				akar = akar,
 				isi = isi,
 				kelas = kelas,
@@ -228,8 +211,8 @@ local function bangunMusuh()
 				siap = os.clock() + rng:NextNumber(0.5, 2),
 			}
 			e.targetX = e.x
-			gerakUnit(e, 0, os.clock(), 1)
-			model.Parent = folderMusuh
+			gerakUnit(e, 0, 1)
+			akar.Parent = folderMusuh
 			table.insert(musuh, e)
 		end
 	end
@@ -264,7 +247,7 @@ local function putusKombo(army)
 	if army.kombo > 0 or army.semangat then
 		army.kombo = 0
 		army.semangat = false
-		army.sorot.Enabled = false
+		army.model:SetAttribute("Semangat", false)
 		kirimKombo(army)
 	end
 end
@@ -325,10 +308,10 @@ local function bikinPrajurit(army, mulaiX)
 	army.prajurit = {}
 	for i, f in ipairs(C.FORMASI) do
 		local kelas = C.KELAS[f.kelas]
-		local model, akar, isi = Bentuk.prajurit({ senjata = f.kelas, baju = army.warna })
+		local akar, isi = Bentuk.akar(f.kelas, army.warna, false)
 		local x = mulaiX + f.x
 		local u = {
-			model = model,
+			model = akar,
 			akar = akar,
 			isi = isi,
 			kelas = kelas,
@@ -341,8 +324,8 @@ local function bikinPrajurit(army, mulaiX)
 			arah = 1,
 			antri = DEPAN_FORMASI - f.x, -- jarak ke barisan paling depan (formasi pas ketahan musuh)
 		}
-		gerakUnit(u, 0, os.clock(), 1)
-		model.Parent = army.model
+		gerakUnit(u, 0, 1)
+		akar.Parent = army.model
 		table.insert(army.prajurit, u)
 	end
 end
@@ -409,14 +392,8 @@ local function tambahPemain(player)
 	local slot = slotKosong()
 	local model = Instance.new("Model")
 	model.Name = "Pasukan_" .. player.UserId
-	local sorot = Instance.new("Highlight") -- nyala pas Semangat
-	sorot.FillColor = Color3.fromRGB(255, 205, 90)
-	sorot.FillTransparency = 0.8
-	sorot.OutlineColor = Color3.fromRGB(255, 220, 120)
-	sorot.OutlineTransparency = 0.3
-	sorot.DepthMode = Enum.HighlightDepthMode.Occluded
-	sorot.Enabled = false
-	sorot.Parent = model
+	-- Dibaca client buat animasi pasukan (jawab perintah, SEMANGAT).
+	model:SetAttribute("Semangat", false)
 	local z = laneZ(slot)
 	model:SetAttribute("LaneZ", z)
 	model:SetAttribute("Pemilik", player.UserId)
@@ -428,7 +405,6 @@ local function tambahPemain(player)
 		z = z,
 		warna = C.WARNA_PLAYER[(slot - 1) % #C.WARNA_PLAYER + 1],
 		model = model,
-		sorot = sorot,
 		prajurit = {},
 		panglima = { panglima = true, kelas = C.KELAS.Panglima, targetX = C.ARENA.mulaiX, antri = DEPAN_FORMASI },
 		kombo = 0,
@@ -466,6 +442,11 @@ end)
 -- ── PERINTAH ───────────────────────────────────────────────────────
 local function serang(army, u, e, pengali)
 	local dmg, crit = hitung(u.kelas, e.kelas, pengali)
+	if u.panglima then
+		Remotes.Efek:FireAllClients("ayun", army.player.UserId)
+	else
+		tandaSerang(u) -- client: animasi nusuk/bacok/manah
+	end
 	if u.kelas.panah then
 		local dari = posBadan(u) + V3(0, 0.6, 0)
 		local ke = posBadan(e)
@@ -473,10 +454,6 @@ local function serang(army, u, e, pengali)
 		Remotes.Efek:FireAllClients("panah", dari, ke, durasi)
 		task.delay(durasi, lukaiMusuh, e, dmg, crit)
 	else
-		u.serbu = os.clock()
-		if u.panglima then
-			Remotes.Efek:FireAllClients("ayun", army.player.UserId)
-		end
 		lukaiMusuh(e, dmg, crit)
 	end
 end
@@ -487,10 +464,7 @@ local function langkahAksi(army, aksi, ke)
 	local kaliLangkah = aksi.semangat and C.SEMANGAT.langkah or 1
 	local pengali = (aksi.semangat and C.SEMANGAT.damage or 1) * (0.85 + 0.3 * aksi.kualitas)
 	local ketukanSerang = aksi.semangat and C.KETUKAN_SERANG_SEMANGAT or C.KETUKAN_SERANG
-	local sekarang = os.clock()
-
 	for _, u in ipairs(semuaUnit(army)) do
-		u.lompat = sekarang -- "jawab" perintah: loncat kecil tiap ketukan
 		local x = posX(u)
 		local langkah = C.LANGKAH_PER_KETUKAN * kaliLangkah
 		if p.id == "Maju" then
@@ -551,8 +525,11 @@ Remotes.Perintah.OnServerEvent:Connect(function(player, id, ketukan, kualitas)
 	army.terakhir = ketukan
 	army.komboMaks = math.max(army.komboMaks, army.kombo)
 	army.semangat = army.kombo >= C.KOMBO_SEMANGAT
-	army.sorot.Enabled = army.semangat
 	army.aksi = { perintah = p, mulai = ketukan + 1, selesai = ketukan + 4, semangat = army.semangat, kualitas = kualitas }
+	army.model:SetAttribute("Semangat", army.semangat)
+	army.model:SetAttribute("Perintah", p.id)
+	army.model:SetAttribute("JawabMulai", army.aksi.mulai)
+	army.model:SetAttribute("JawabSelesai", army.aksi.selesai)
 	kirimKombo(army)
 
 	-- Ping gede: ketukan jawaban yang udah lewat langsung dijalanin.
@@ -594,13 +571,14 @@ local function musuhBertindak(sekarang)
 			if target then
 				local dmg, crit = hitung(e.kelas, target.kelas, 1)
 				if e.kelas.panah then
+					tandaSerang(e)
 					local dari = posBadan(e) + V3(0, 0.6, 0)
 					local ke = posBadan(target)
 					local durasi = math.clamp((ke - dari).Magnitude / 45, 0.2, 0.6)
 					Remotes.Efek:FireAllClients("panah", dari, ke, durasi)
 					task.delay(durasi, lukaiPasukan, targetArmy, target, dmg, crit)
 				else
-					e.serbu = sekarang
+					tandaSerang(e)
 					lukaiPasukan(targetArmy, target, dmg, crit)
 				end
 				e.siap = sekarang + e.kelas.jeda * rng:NextNumber(0.85, 1.15)
@@ -634,12 +612,12 @@ RunService.Heartbeat:Connect(function(dt)
 	for _, army in pairs(pasukan) do
 		local kali = army.semangat and C.SEMANGAT.langkah or 1
 		for _, u in ipairs(army.prajurit) do
-			gerakUnit(u, dt, sekarang, kali)
+			gerakUnit(u, dt, kali)
 		end
 	end
 	for _, e in ipairs(musuh) do
 		if e.hidup then
-			gerakUnit(e, dt, sekarang, 1)
+			gerakUnit(e, dt, 1)
 		end
 	end
 	if not stage.selesai then

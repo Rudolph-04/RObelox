@@ -5,8 +5,7 @@
 --   angka(pos, nilai, crit, kenaPasukan)  angka damage melayang
 --   panah(dari, ke, durasi)              anak panah melengkung
 --   mati(pos)                            kepulan debu
---   pukul(character) / ayun(character)   gerak tangan avatar (mukul kendang /
---                                        ngayun golok) lewat Motor6D.Transform,
+--   ayun(character)                      avatar ngayun golok lewat Motor6D.Transform,
 --                                        diset di Stepped biar nimpa animasi bawaan.
 --                                        Cuma avatar R15.
 
@@ -101,13 +100,7 @@ end
 
 -- ── GERAK TANGAN ───────────────────────────────────────────────────
 local gerakan = {} -- [character] = { jenis, mulai }
-local DURASI = { pukul = 0.16, ayun = 0.38 }
-
-function Efek.pukul(character)
-	if character then
-		gerakan[character] = { jenis = "pukul", mulai = os.clock() }
-	end
-end
+local DURASI = { ayun = 0.38 }
 
 function Efek.ayun(character)
 	if character then
@@ -133,14 +126,6 @@ RunService.Stepped:Connect(function()
 			for _, m in ipairs({ kanan, kiri }) do
 				if m then
 					m.Transform = CFrame.identity
-				end
-			end
-		elseif g.jenis == "pukul" then
-			-- Dua tangan keangkat dikit ke depan, terus mukul ke bawah.
-			local sudut = 0.95 - 0.55 * math.sin(k * math.pi)
-			for _, m in ipairs({ kanan, kiri }) do
-				if m then
-					m.Transform = CFrame.Angles(sudut, 0, 0)
 				end
 			end
 		elseif kanan then

@@ -26,6 +26,7 @@ local Remotes = require(ReplicatedStorage:WaitForChild("LaskarRemotes"))
 local UI = require(script.Parent:WaitForChild("LaskarUI"))
 local Efek = require(script.Parent:WaitForChild("LaskarEfek"))
 local Latar = require(script.Parent:WaitForChild("LaskarLatar"))
+local Prajurit = require(script.Parent:WaitForChild("LaskarPrajurit"))
 
 local pemain = Players.LocalPlayer
 local kamera = workspace.CurrentCamera
@@ -149,7 +150,6 @@ local function pukul(id)
 	end
 	bunyi(suaraDrum[id])
 	ui.pukul(id)
-	Efek.pukul(pemain.Character)
 
 	local posisi = posisiKetukan(true)
 	local n = math.floor(posisi + 0.5)
@@ -223,6 +223,7 @@ end
 
 ui = UI.buat(pemain, pukul, ubahKalibrasi, gantiKamera)
 Latar.mulai()
+Prajurit.mulai()
 ui.pesan("Pukul kendang (D F J K) pas ketukan. Daftar perintah di kanan atas.", 6)
 
 local function modelPasukan()

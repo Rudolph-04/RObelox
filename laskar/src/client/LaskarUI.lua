@@ -152,12 +152,14 @@ function UI.buat(pemain, onPad, onKalibrasi, onKamera)
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -(22 + PAD + 14 + SLOT + 28)),
 		Size = UDim2.fromOffset(240, 30),
+		Text = "",
 		TextSize = 22,
 		Font = Enum.Font.GothamBlack,
 		TextTransparency = 1,
 		Parent = gui,
 	})
-	buat("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Transparency = 0.4, Parent = penilaian })
+	-- Outline ikut pudar bareng teks (kalau nggak, garis tulisan terakhir nyangkut di layar).
+	local garisPenilaian = buat("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.5, Transparency = 1, Parent = penilaian })
 
 	-- ── KOMBO ───────────────────────────────────────────────────
 	local kotakKombo = panel({
@@ -312,9 +314,11 @@ function UI.buat(pemain, onPad, onKalibrasi, onKamera)
 		penilaian.Text = label
 		penilaian.TextColor3 = warna or PUTIH
 		penilaian.TextTransparency = 0
+		garisPenilaian.Transparency = 0.4
 		task.delay(0.45, function()
 			if token == tokenPenilaian then
 				TweenService:Create(penilaian, TweenInfo.new(0.25), { TextTransparency = 1 }):Play()
+				TweenService:Create(garisPenilaian, TweenInfo.new(0.25), { Transparency = 1 }):Play()
 			end
 		end)
 	end

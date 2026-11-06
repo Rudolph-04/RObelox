@@ -57,6 +57,7 @@ Bikin place **baru**, jangan di place Juragan Tahu.
 | `laskar/src/client/LaskarClient.client.lua` | StarterPlayer > StarterPlayerScripts > `LaskarClient` | LocalScript |
 | `laskar/src/client/LaskarUI.lua` | StarterPlayer > StarterPlayerScripts > `LaskarUI` | ModuleScript |
 | `laskar/src/client/LaskarEfek.lua` | StarterPlayer > StarterPlayerScripts > `LaskarEfek` | ModuleScript |
+| `laskar/src/client/LaskarLatar.lua` | StarterPlayer > StarterPlayerScripts > `LaskarLatar` | ModuleScript |
 
 4. Stage dibangun sendiri pas Play (nggak ada builder yang perlu dijalanin).
 5. Playtest **sekali**: Play, coba MAJU sama SERANG sampai ketemu musuh

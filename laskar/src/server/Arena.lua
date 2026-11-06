@@ -1,5 +1,6 @@
--- Stage prototipe: jalur lurus sepanjang X + latar (bukit, pohon, gerbang
--- start). Dibangun pas server mulai, jadi place-nya boleh kosong.
+-- Stage prototipe: jalur lurus sepanjang X + latar diem (bukit, gunung,
+-- gerbang start). Dibangun pas server mulai, jadi place-nya boleh kosong.
+-- Hutan yang goyang, burung, awan dll dibikin di client (LaskarLatar).
 -- ModuleScript di ServerScriptService.
 --
 -- Kamera ngeliat dari +Z ke -Z, jadi latar ditaruh di -Z. Lantai di atas
@@ -48,7 +49,7 @@ function Arena.bangun()
 	local panjang = x2 - x1
 
 	-- Tanah (atas y 0.5) + jalan tanah (atas y = tanahY).
-	part(folder, "Tanah", V3(panjang, 1, 140), CFrame.new(tengahX, 0, -30), RGB(96, 140, 72), M.Grass)
+	part(folder, "Tanah", V3(panjang, 1, 200), CFrame.new(tengahX, 0, -60), RGB(96, 140, 72), M.Grass) -- z -160..+40: sampai kaki bukit
 	local tebalJalan = 0.2
 	part(folder, "Jalan", V3(panjang, tebalJalan, 20), CFrame.new(tengahX, a.tanahY - tebalJalan / 2, 0), RGB(176, 146, 104), M.Ground)
 
@@ -57,27 +58,18 @@ function Arena.bangun()
 	local warnaBukit = { RGB(84, 128, 66), RGB(72, 116, 60), RGB(98, 142, 78) }
 	local x = x1
 	while x < x2 do
-		local d = acak:NextNumber(50, 90)
-		local z = acak:NextNumber(-95, -70)
-		part(folder, "Bukit", V3(d, d, d), CFrame.new(x, -d * 0.3, z), warnaBukit[acak:NextInteger(1, #warnaBukit)], M.Grass, Enum.PartType.Ball)
+		local d = acak:NextNumber(40, 75)
+		local z = acak:NextNumber(-115, -90) -- di belakang hutan jauh (z -40..-62)
+		-- Puncak = 0.3 x diameter: masih nyisain langit di atasnya buat awan & burung.
+		part(folder, "Bukit", V3(d, d, d), CFrame.new(x, -d * 0.2, z), warnaBukit[acak:NextInteger(1, #warnaBukit)], M.Grass, Enum.PartType.Ball)
 		x += d * 0.6
 	end
 	-- Gunung jauh (agak kebiruan).
 	x = x1
 	while x < x2 do
 		local d = acak:NextNumber(140, 220)
-		part(folder, "Gunung", V3(d, d, d), CFrame.new(x, -d * 0.35, -230), RGB(110, 140, 160), M.SmoothPlastic, Enum.PartType.Ball)
+		part(folder, "Gunung", V3(d, d, d), CFrame.new(x, -d * 0.2, -230), RGB(110, 140, 160), M.SmoothPlastic, Enum.PartType.Ball)
 		x += d * 0.7
-	end
-
-	-- Pohon sederhana di antara jalur & bukit.
-	for _ = 1, 26 do
-		local px = acak:NextNumber(x1 + 10, x2 - 10)
-		local pz = acak:NextNumber(-40, -16)
-		local tinggi = acak:NextNumber(5, 9)
-		part(folder, "Batang", V3(tinggi, 0.8, 0.8), CFrame.new(px, 0.5 + tinggi / 2, pz) * CFrame.Angles(0, 0, math.rad(90)), RGB(104, 72, 46), M.Wood, Enum.PartType.Cylinder)
-		local daun = acak:NextNumber(4.5, 7)
-		part(folder, "Daun", V3(daun, daun, daun), CFrame.new(px, 0.5 + tinggi + daun * 0.25, pz), warnaBukit[acak:NextInteger(1, #warnaBukit)], M.Grass, Enum.PartType.Ball)
 	end
 
 	-- Gerbang start: dua tiang bambu + kain melintang (polos, tanpa tulisan).

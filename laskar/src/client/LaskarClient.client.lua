@@ -25,6 +25,7 @@ local C = require(ReplicatedStorage:WaitForChild("LaskarConfig"))
 local Remotes = require(ReplicatedStorage:WaitForChild("LaskarRemotes"))
 local UI = require(script.Parent:WaitForChild("LaskarUI"))
 local Efek = require(script.Parent:WaitForChild("LaskarEfek"))
+local Latar = require(script.Parent:WaitForChild("LaskarLatar"))
 
 local pemain = Players.LocalPlayer
 local kamera = workspace.CurrentCamera
@@ -235,6 +236,7 @@ local function gantiKamera()
 end
 
 ui = UI.buat(pemain, pukul, ubahKalibrasi, gantiKamera)
+Latar.mulai()
 ui.pesan("Pukul kendang (D F J K) pas ketukan. Daftar perintah di kanan atas.", 6)
 
 local function modelPasukan()

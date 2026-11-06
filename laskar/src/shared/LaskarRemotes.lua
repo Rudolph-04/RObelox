@@ -5,12 +5,13 @@
 --                                                        atau ("Putus") pas kombo putus
 --   Umpan     server -> client  (info)                    kombo, menang, pesan
 --   Efek      server -> semua   (jenis, ...)              angka damage, panah, mati, ayun
+--   Peran     client -> server  (peran)                  pilih peran panglima (avatar)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local NAMA_FOLDER = "LaskarEvents" -- beda dari nama ModuleScript ini biar WaitForChild nggak ketuker
-local NAMA_EVENT = { "Perintah", "Umpan", "Efek" }
+local NAMA_EVENT = { "Perintah", "Umpan", "Efek", "Peran" }
 
 local folder
 if RunService:IsServer() then

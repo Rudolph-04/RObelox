@@ -6,20 +6,25 @@
 -- Client yang bikin badannya & gerakin tiap frame, jadi animasinya bisa
 -- detail tanpa makan jaringan.
 --
--- Desain (sengaja BUKAN tiruan Patapon): badan bulet warna pasukan, topeng
--- kayu di muka, kaki & tangan lidi. Topi per kelas: Tombak = ikat kepala +
--- bulu, Perisai = helm, Panah = caping. Musuh: badan gelap, topeng hitam mata
--- merah, tanduk.
+-- Desain: "bakso" bulet bermata satu (coklat berbintil, BUKAN siluet hitam
+-- polos kayak Patapon), alis, mulut, selempang warna pasukan, kaki & tangan
+-- lidi. Topi per kelas: Perisai = helm, Pedang = ikat kepala warna pasukan,
+-- Tombak = ikat kepala + bulu, Panah = caping, Bendera = peci warna pasukan.
+-- Musuh: "bakso gosong", mata merah, bertanduk.
 --
 -- Animasi:
 --   tiap ketukan       : loncat kecil (semua unit ikut ngedenyut sama musik)
---   jawab perintah     : loncat tinggi + dua tangan ke atas (TAHAN: jongkok)
+--   jawab perintah     : loncat tinggi + tangan ke atas + mulut kebuka (TAHAN: jongkok)
 --   jalan              : kaki melangkah, tangan ngayun, badan naik-turun
---   nyerang            : Tombak nusuk, Perisai mbacok, Panah narik busur
+--   nunggu             : celingak-celinguk, goyang-goyang, ketuk kaki; pasukan
+--                        sendiri nyeletuk ("Nunggu apa nih?") tiap ~10 detik
+--   nyerang            : Tombak nusuk, Perisai/Pedang mbacok, Panah narik busur
+--   bendera            : kibar pelan, kenceng pas jawab perintah
 --   mati               : jatuh ke belakang terus ilang
 --   SEMANGAT           : sorot emas + loncat lebih tinggi
--- Badan diserongin ~35 derajat ke kamera biar topengnya keliatan dari samping.
+-- Badan diserongin ~35 derajat ke kamera biar matanya keliatan dari samping.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -31,8 +36,10 @@ local M = Enum.Material
 local HADAP_DEPAN = CFrame.Angles(0, math.rad(90), 0) -- silinder: sumbu X -> Z
 local TEGAK = CFrame.Angles(0, 0, math.rad(90)) -- silinder: sumbu X -> Y
 
-local TOPENG = RGB(242, 230, 204)
-local TOPENG_MUSUH = RGB(40, 30, 32)
+local BAKSO = RGB(168, 136, 106)
+local BAKSO_BINTIL = RGB(140, 110, 84)
+local BAKSO_GOSONG = RGB(70, 48, 40)
+local PUTIH_MATA = RGB(250, 250, 246)
 local HITAM = RGB(24, 20, 20)
 local MERAH = RGB(196, 48, 40)
 local KAYU = RGB(140, 96, 56)
@@ -40,7 +47,6 @@ local KAYU_GELAP = RGB(98, 66, 40)
 local BESI = RGB(176, 178, 184)
 local JERAMI = RGB(222, 190, 120)
 local TULANG = RGB(232, 222, 196)
-local BADAN_MUSUH = RGB(92, 30, 34)
 
 local SERONG = math.rad(35) -- badan diputer segini ke arah kamera
 local LAMA_SERANG = 0.4
@@ -60,7 +66,12 @@ local SUDUT_DASAR = {
 	Tombak = { lenganL = 0.15, lenganR = math.rad(15) },
 	Perisai = { lenganL = math.rad(50), lenganR = math.rad(20) },
 	Panah = { lenganL = math.rad(90), lenganR = math.rad(25) },
+	Pedang = { lenganL = 0.15, lenganR = math.rad(25) },
+	Bendera = { lenganL = math.rad(35), lenganR = math.rad(30) },
 }
+
+-- Titik di permukaan badan buat bintil bakso (sudut horizontal, tinggi), jauh dari mata.
+local BINTIL = { { 100, 0.3 }, { 150, -0.2 }, { 200, 0.45 }, { 250, -0.35 }, { 300, 0.15 }, { 60, -0.5 }, { 180, 0.75 } }
 
 local Prajurit = {}
 
@@ -79,7 +90,7 @@ local function bikinRig(jenis, warna, musuh)
 	local dasar = SUDUT_DASAR[senjata] or SUDUT_DASAR.Tombak
 	local model = Instance.new("Model")
 	model.Name = jenis
-	local rig = { model = model, parts = {}, grup = {}, offset = {}, senjata = senjata, musuh = musuh, dasar = dasar }
+	local rig = { model = model, parts = {}, grup = {}, offset = {}, senjata = senjata, musuh = musuh, dasar = dasar, warna = warna }
 
 	-- Part ditaruh di pose dasarnya; offset disimpen relatif engsel grup (yang udah diputer sudut dasar).
 	local function pivotDasar(grup)
@@ -119,8 +130,7 @@ local function bikinRig(jenis, warna, musuh)
 		return tambah(grup, nama, V3(d, d, d), CFrame.new(pos), warnaP, material, Enum.PartType.Ball)
 	end
 
-	local warnaBadan = musuh and BADAN_MUSUH or warna
-	local warnaTopeng = musuh and TOPENG_MUSUH or TOPENG
+	local warnaBadan = musuh and BAKSO_GOSONG or BAKSO
 
 	-- Kaki lidi + telapak bulet.
 	for _, sx in ipairs({ -1, 1 }) do
@@ -129,43 +139,61 @@ local function bikinRig(jenis, warna, musuh)
 		bola(grup, "Telapak", 0.28, V3(sx * 0.28, 0.13, -0.07), HITAM)
 	end
 
-	-- Badan bulet.
+	-- Badan bakso + bintil-bintil.
 	local pusat = V3(0, 1.85, 0)
-	bola("badan", "Badan", 1.9, pusat, warnaBadan, M.SmoothPlastic)
-
-	-- Topeng di muka + mata (+ kilau) + coretan.
-	tambah("badan", "Topeng", V3(0.16, 1.2, 1.2), CFrame.new(0, 1.95, -0.98) * HADAP_DEPAN, warnaTopeng, M.Wood, Enum.PartType.Cylinder)
-	local zMuka = -1.07
-	for _, sx in ipairs({ -1, 1 }) do
-		bola("badan", "Mata", 0.22, V3(sx * 0.22, 2.02, zMuka), musuh and RGB(255, 60, 50) or HITAM, musuh and M.Neon or M.SmoothPlastic)
-		if not musuh then
-			bola("badan", "Kilau", 0.07, V3(sx * 0.22 + 0.04, 2.06, zMuka - 0.09), RGB(255, 255, 255))
-			tambah("badan", "Coretan", V3(0.26, 0.06, 0.03), CFrame.new(sx * 0.38, 1.78, zMuka + 0.01), MERAH)
-		end
-		-- Alis: miring galak buat Tombak & musuh.
-		local miring = (musuh or senjata == "Tombak") and sx * math.rad(-14) or 0
-		tambah("badan", "Alis", V3(0.3, 0.06, 0.03), CFrame.new(sx * 0.22, 2.21, zMuka + 0.01) * CFrame.Angles(0, 0, miring), musuh and RGB(255, 60, 50) or HITAM)
+	rig.badanPart = bola("badan", "Badan", 1.9, pusat, warnaBadan, M.Sand)
+	for _, b in ipairs(BINTIL) do
+		local a = math.rad(b[1])
+		local arah = V3(math.sin(a) * math.sqrt(1 - b[2] ^ 2), b[2], math.cos(a) * math.sqrt(1 - b[2] ^ 2))
+		bola("badan", "Bintil", 0.32, pusat + arah * 0.9, musuh and RGB(52, 36, 30) or BAKSO_BINTIL, M.Sand)
 	end
-	tambah("badan", "Mulut", V3(0.26, 0.05, 0.03), CFrame.new(0, 1.62, zMuka + 0.02), HITAM)
 
-	-- Topi / tanduk.
+	-- Satu mata gede + pupil + kilau.
+	bola("badan", "Mata", 1.0, V3(0, 2.0, -0.62), musuh and RGB(240, 220, 150) or PUTIH_MATA)
+	bola("badan", "Pupil", 0.46, V3(0, 2.0, -1.02), musuh and RGB(220, 40, 30) or HITAM, musuh and M.Neon or M.SmoothPlastic)
+	bola("badan", "Kilau", 0.12, V3(0.1, 2.12, -1.24), RGB(255, 255, 255))
+
+	-- Alis: dua potong, miring galak buat Tombak, Pedang & musuh.
+	local galak = musuh or senjata == "Tombak" or senjata == "Pedang"
+	for _, sx in ipairs({ -1, 1 }) do
+		local miring = galak and sx * math.rad(-16) or sx * math.rad(6)
+		tambah("badan", "Alis", V3(0.46, 0.13, 0.12), CFrame.new(sx * 0.24, 2.62, -0.86) * CFrame.Angles(0, 0, miring), HITAM)
+	end
+
+	-- Mulut: garis kalau diem, bulet kebuka pas jawab perintah.
+	rig.mulutTutup = tambah("badan", "Mulut", V3(0.32, 0.06, 0.06), CFrame.new(0, 1.36, -0.82), HITAM)
+	rig.mulutBuka = bola("badan", "MulutBuka", 0.36, V3(0, 1.36, -0.78), RGB(90, 20, 24))
+	rig.mulutBuka.Transparency = 1
+
 	if musuh then
 		for _, sx in ipairs({ -1, 1 }) do
 			lidi("badan", "Tanduk", V3(sx * 0.45, 2.5, 0), V3(sx * 0.75, 3.15, 0.1), 0.16, TULANG)
 		end
-	elseif senjata == "Tombak" then
-		tambah("badan", "IkatKepala", V3(0.16, 1.62, 1.62), CFrame.new(0, 2.45, 0) * TEGAK, RGB(240, 236, 226), M.Fabric, Enum.PartType.Cylinder)
-		for i, miring in ipairs({ -18, 0, 18 }) do
-			lidi("badan", "Bulu", V3(0, 2.75, 0.1), V3(math.rad(miring) * 1.2, 3.35 + (i == 2 and 0.15 or 0), 0.5), 0.1, MERAH, M.Fabric)
-		end
-	elseif senjata == "Perisai" then
-		tambah("badan", "PinggirHelm", V3(0.12, 1.95, 1.95), CFrame.new(0, 2.45, 0) * TEGAK, BESI, M.Metal, Enum.PartType.Cylinder)
-		bola("badan", "Helm", 1.5, V3(0, 2.5, 0.05), BESI, M.Metal)
-		lidi("badan", "TandukHelm", V3(0, 3.15, 0), V3(0, 3.5, 0), 0.14, BESI, M.Metal)
-	else -- Panah: caping
-		for i, ukuran in ipairs({ { 2.3, 0.1 }, { 1.4, 0.22 }, { 0.6, 0.24 } }) do
-			local y = 2.7 + (i - 1) * 0.16
-			tambah("badan", "Caping", V3(ukuran[2], ukuran[1], ukuran[1]), CFrame.new(0, y, 0) * TEGAK, JERAMI, M.Fabric, Enum.PartType.Cylinder)
+	else
+		-- Selempang warna pasukan.
+		tambah("badan", "Selempang", V3(0.24, 1.62, 1.62), CFrame.new(0, 1.3, 0) * TEGAK, warna, M.Fabric, Enum.PartType.Cylinder)
+		if senjata == "Tombak" or senjata == "Pedang" then
+			tambah("badan", "IkatKepala", V3(0.16, 1.5, 1.5), CFrame.new(0, 2.5, 0) * TEGAK, senjata == "Pedang" and warna or RGB(240, 236, 226), M.Fabric, Enum.PartType.Cylinder)
+			if senjata == "Tombak" then
+				for i, miring in ipairs({ -18, 0, 18 }) do
+					lidi("badan", "Bulu", V3(0, 2.75, 0.1), V3(math.rad(miring) * 1.2, 3.35 + (i == 2 and 0.15 or 0), 0.5), 0.1, MERAH, M.Fabric)
+				end
+			else
+				for _, sx in ipairs({ -1, 1 }) do
+					lidi("badan", "UjungIkat", V3(0, 2.5, 0.72), V3(sx * 0.25, 2.1, 1.15), 0.1, warna, M.Fabric)
+				end
+			end
+		elseif senjata == "Perisai" then
+			tambah("badan", "PinggirHelm", V3(0.12, 1.95, 1.95), CFrame.new(0, 2.5, 0.05) * TEGAK, BESI, M.Metal, Enum.PartType.Cylinder)
+			bola("badan", "Helm", 1.5, V3(0, 2.6, 0.1), BESI, M.Metal)
+			lidi("badan", "TandukHelm", V3(0, 3.25, 0.1), V3(0, 3.6, 0.1), 0.14, BESI, M.Metal)
+		elseif senjata == "Bendera" then
+			tambah("badan", "Peci", V3(0.4, 1.25, 1.25), CFrame.new(0, 2.78, 0.05) * TEGAK, warna, M.Fabric, Enum.PartType.Cylinder)
+		else -- Panah: caping
+			for i, ukuran in ipairs({ { 2.3, 0.1 }, { 1.4, 0.22 }, { 0.6, 0.24 } }) do
+				local y = 2.72 + (i - 1) * 0.16
+				tambah("badan", "Caping", V3(ukuran[2], ukuran[1], ukuran[1]), CFrame.new(0, y, 0.05) * TEGAK, JERAMI, M.Fabric, Enum.PartType.Cylinder)
+			end
 		end
 	end
 
@@ -194,6 +222,22 @@ local function bikinRig(jenis, warna, musuh)
 		local g = tangan.lenganR
 		local arah = V3(0, 0.45, -0.89)
 		tambah("lenganR", "Golok", V3(0.06, 0.2, 1.0), CFrame.lookAt(g + arah * 0.55, g + arah * 1.1), BESI, M.Metal)
+	elseif senjata == "Pedang" then
+		local g = tangan.lenganR
+		local arah = V3(0, 0.55, -0.84)
+		lidi("lenganR", "GagangPedang", g - arah * 0.15, g + arah * 0.2, 0.12, KAYU_GELAP, M.Wood)
+		tambah("lenganR", "PelindungPedang", V3(0.5, 0.08, 0.1), CFrame.lookAt(g + arah * 0.22, g + arah * 1.0), RGB(200, 170, 80), M.Metal)
+		tambah("lenganR", "BilahPedang", V3(0.06, 0.2, 1.5), CFrame.lookAt(g + arah * 0.98, g + arah * 2.0), BESI, M.Metal)
+	elseif senjata == "Bendera" then
+		-- Tiang dipegang tangan kanan, kain warna pasukan berkibar ke belakang.
+		local g = tangan.lenganR
+		local arah = V3(0, math.cos(math.rad(8)), math.sin(math.rad(8)))
+		lidi("lenganR", "TiangBendera", g - arah * 0.8, g + arah * 4.2, 0.12, KAYU, M.Wood)
+		local puncak = g + arah * 4.2
+		bola("lenganR", "PucukTiang", 0.26, puncak + arah * 0.1, RGB(220, 190, 80), M.Metal)
+		local kain = puncak - arah * 0.75 + V3(0, 0, 0.85)
+		tambah("lenganR", "KainBendera", V3(0.06, 1.2, 1.6), CFrame.new(kain), rig.warna, M.Fabric)
+		tambah("lenganR", "LambangBendera", V3(0.09, 0.6, 0.6), CFrame.new(kain), RGB(250, 246, 236), M.Fabric, Enum.PartType.Cylinder)
 	else
 		-- Busur tegak di depan tangan kiri (lengan kiri dasarnya lurus ke depan).
 		local h = tangan.lenganL
@@ -264,7 +308,11 @@ local function pose(rig, akarCF, t, posisiKetukan, dt)
 
 	local dL = -ayun * 0.6 + angkat
 	local dR = ayun * 0.6 + angkat
-	if rig.senjata == "Panah" then
+	if rig.senjata == "Bendera" then
+		-- Kibar: pelan pas diem, kenceng pas jawab perintah. Tiangnya nggak ikut diangkat tinggi.
+		dR = math.sin(t * (jawab and 9 or 2.5) + rig.fase) * math.rad(jawab and 14 or 4)
+		dL = -ayun * 0.3 + angkat * 0.3
+	elseif rig.senjata == "Panah" then
 		dL = -ayun * 0.15 -- busur tetep di depan
 	elseif rig.senjata == "Perisai" then
 		dL = -ayun * 0.2 + (jongkok > 0 and math.rad(35) or 0)
@@ -284,9 +332,23 @@ local function pose(rig, akarCF, t, posisiKetukan, dt)
 		end
 	end
 
+	-- Nunggu perintah: celingak-celinguk, goyang dikit, ketuk-ketuk kaki.
+	local diam = not jawab and rig.jalan < 0.1 and s >= 1
+	local celingak = diam and math.sin(t * 0.7 + rig.fase) * math.rad(18) or 0
+	local goyang = diam and math.sin(t * 1.9 + rig.fase) * math.rad(4) or 0
+	local ketuk = diam and math.max(0, math.sin(t * 5 + rig.fase)) * math.rad(-14) or 0
+
+	-- Mulut kebuka pas "jawab" perintah.
+	local teriak = jawab and perintah ~= "Tahan"
+	if teriak ~= rig.teriak and rig.mulutBuka then
+		rig.teriak = teriak
+		rig.mulutBuka.Transparency = teriak and 0 or 1
+		rig.mulutTutup.Transparency = teriak and 1 or 0
+	end
+
 	-- Serongin ke kamera (+Z), apa pun arah hadapnya.
 	local hadap = akarCF.LookVector.X >= 0 and 1 or -1
-	local akar = akarCF * CFrame.Angles(0, -SERONG * hadap, 0) * CFrame.new(0, y - jongkok, -maju)
+	local akar = akarCF * CFrame.Angles(0, -SERONG * hadap + celingak, goyang) * CFrame.new(0, y - jongkok, -maju)
 
 	-- Mati: jatuh ke belakang sambil ambles.
 	if rig.mati then
@@ -298,12 +360,69 @@ local function pose(rig, akarCF, t, posisiKetukan, dt)
 	local grupCF = {
 		badan = akar,
 		kakiL = akar * ENGSEL.kakiL * CFrame.Angles(ayun, 0, 0),
-		kakiR = akar * ENGSEL.kakiR * CFrame.Angles(-ayun, 0, 0),
+		kakiR = akar * ENGSEL.kakiR * CFrame.Angles(-ayun + ketuk, 0, 0),
 		lenganL = akar * ENGSEL.lenganL * CFrame.Angles(rig.dasar.lenganL + dL, 0, 0),
 		lenganR = akar * ENGSEL.lenganR * CFrame.Angles(rig.dasar.lenganR + dR, 0, 0),
 	}
 	rig.cfTerakhir = akar
 	return grupCF
+end
+
+-- ── CELETUKAN ──────────────────────────────────────────────────────
+local acakCeletuk = Random.new()
+local celetukTerakhir = 0
+
+local function celetuk(rig, isi)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "Celetuk"
+	bb.Size = UDim2.fromOffset(180, 40)
+	bb.StudsOffset = V3(0, 2.5, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 120
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = RGB(252, 250, 244)
+	label.TextColor3 = RGB(40, 34, 30)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.Text = isi
+	label.Parent = bb
+	local sudut = Instance.new("UICorner")
+	sudut.CornerRadius = UDim.new(0, 12)
+	sudut.Parent = label
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+	pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 4), UDim.new(0, 4)
+	pad.Parent = label
+	bb.Parent = rig.badanPart
+	task.delay(3, function()
+		bb:Destroy()
+	end)
+end
+
+-- Pasukan player ini nyeletuk kalau udah CELETUK_DETIK nggak dikasih perintah.
+local function cekCeletuk(posisiKetukan, waktuAwal)
+	local folder = workspace:FindFirstChild("Pasukan")
+	local armyKu = folder and folder:FindFirstChild("Pasukan_" .. Players.LocalPlayer.UserId)
+	if not armyKu or os.clock() - celetukTerakhir < C.CELETUK_DETIK then
+		return
+	end
+	local selesai = armyKu:GetAttribute("JawabSelesai")
+	local diamSejak = selesai and (selesai + 1) or (waktuAwal - MULAI) / C.KETUKAN
+	if (posisiKetukan - diamSejak) * C.KETUKAN < C.CELETUK_DETIK then
+		return
+	end
+	local calon = {}
+	for _, rig in pairs(rigs) do
+		if rig.army == armyKu and not rig.mati and rig.badanPart then
+			table.insert(calon, rig)
+		end
+	end
+	if #calon > 0 then
+		celetuk(calon[acakCeletuk:NextInteger(1, #calon)], C.CELETUK[acakCeletuk:NextInteger(1, #C.CELETUK)])
+		celetukTerakhir = os.clock()
+	end
 end
 
 -- ── DAFTAR UNIT ────────────────────────────────────────────────────
@@ -381,6 +500,7 @@ function Prajurit.mulai()
 	folderVisual.Parent = workspace
 
 	MULAI = ReplicatedStorage:GetAttribute("MulaiKetukan")
+	local waktuAwal = workspace:GetServerTimeNow()
 	task.spawn(function()
 		pantau(workspace:WaitForChild("Pasukan"))
 	end)
@@ -419,6 +539,7 @@ function Prajurit.mulai()
 		if n > 0 then
 			workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 		end
+		cekCeletuk(posisiKetukan, waktuAwal)
 
 		-- Sorot SEMANGAT per pasukan.
 		for _, m in ipairs(folderVisual:GetChildren()) do

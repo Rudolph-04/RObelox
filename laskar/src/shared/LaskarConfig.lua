@@ -48,23 +48,51 @@ C.CRIT_KALI = 1.5
 -- ── PASUKAN ────────────────────────────────────────────────────────
 -- hp, atk, def, crit (peluang 0-1), jangkau (stud), kecepatan (stud/detik).
 C.KELAS = {
-	Panglima = { hp = 260, atk = 20, def = 4, crit = 0.15, jangkau = 7, kecepatan = 10 }, -- avatar player
-	Perisai = { hp = 190, atk = 9, def = 7, crit = 0.05, jangkau = 5, kecepatan = 8 },
+	Perisai = { hp = 190, atk = 9, def = 7, crit = 0.05, jangkau = 5, kecepatan = 9 }, -- tameng + golok, paling depan
+	Pedang = { hp = 130, atk = 15, def = 4, crit = 0.12, jangkau = 5.5, kecepatan = 9 },
 	Tombak = { hp = 110, atk = 16, def = 2, crit = 0.10, jangkau = 7, kecepatan = 9 },
-	Panah = { hp = 75, atk = 12, def = 0, crit = 0.10, jangkau = 26, kecepatan = 9, panah = true },
+	Panah = { hp = 75, atk = 12, def = 0, crit = 0.10, jangkau = 26, kecepatan = 9, panah = true }, -- paling rentan, paling belakang
+	-- Pembawa bendera: nggak nyerang. Kalau gugur, pasukan bubar balik ke awal.
+	Bendera = { hp = 150, atk = 0, def = 3, crit = 0, jangkau = 0, kecepatan = 9, bendera = true },
+}
+
+-- Panglima = avatar player. Perannya dipilih player (salah satu kelas di
+-- bawah), statnya = kelas itu dikali PANGLIMA_KALI.
+C.PERAN_PANGLIMA = { "Perisai", "Pedang", "Tombak", "Panah" }
+C.PERAN_AWAL = "Pedang"
+C.PANGLIMA_KALI = { hp = 2.2, atk = 1.4, def = 2, crit = 0.05 }
+C.KETERANGAN_PERAN = {
+	Perisai = "Paling depan, paling tahan pukul",
+	Pedang = "Serangan cepat & seimbang",
+	Tombak = "Jangkauan lebih panjang",
+	Panah = "Nyerang dari jauh, tapi rapuh",
 }
 
 -- Jarak maju per ketukan (sama buat semua, biar formasi nggak kepencar).
 -- kecepatan di atas = kecepatan maksimal jalan; harus >= LANGKAH / KETUKAN.
 C.LANGKAH_PER_KETUKAN = 4
 
--- Formasi tiap player. x = posisi relatif panglima (+ = di depan).
+-- Formasi tiap player: 5 prajurit, x = posisi relatif titik awal (+ = depan).
 C.FORMASI = {
-	{ kelas = "Perisai", x = 1.5 },
-	{ kelas = "Tombak", x = -2.5 },
-	{ kelas = "Tombak", x = -4.5 },
-	{ kelas = "Panah", x = -8 },
-	{ kelas = "Panah", x = -10 },
+	{ kelas = "Perisai", x = 3 },
+	{ kelas = "Pedang", x = 1 },
+	{ kelas = "Tombak", x = -1.5 },
+	{ kelas = "Bendera", x = -4.5 },
+	{ kelas = "Panah", x = -8 }, -- paling rentan: paling belakang
+}
+-- Posisi panglima di formasi, ngikutin perannya.
+C.POSISI_PANGLIMA = { Perisai = 4.8, Pedang = 2.2, Tombak = 0, Panah = -6.3 }
+
+-- Celetukan pasukan kalau kelamaan nggak dikasih perintah (tiap ~10 detik).
+C.CELETUK_DETIK = 10
+C.CELETUK = {
+	"Nunggu apa nih?",
+	"Kenapa nggak jalan?",
+	"Panglima, kendangnya mana?",
+	"Ayo maju!",
+	"Kita diem aja nih?",
+	"Musuhnya di depan tuh!",
+	"Ngantuk...",
 }
 
 -- Warna baju pasukan per player (urut slot).

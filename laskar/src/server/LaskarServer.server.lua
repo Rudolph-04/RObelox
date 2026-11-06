@@ -30,10 +30,28 @@ local K = C.KETUKAN
 local TANAH = C.ARENA.tanahY
 local rng = Random.new()
 
--- Posisi barisan paling depan di formasi (relatif panglima di x = 0).
+-- Posisi barisan paling depan di formasi (termasuk panglima peran apa pun).
 local DEPAN_FORMASI = 0
 for _, f in ipairs(C.FORMASI) do
 	DEPAN_FORMASI = math.max(DEPAN_FORMASI, f.x)
+end
+for _, x in pairs(C.POSISI_PANGLIMA) do
+	DEPAN_FORMASI = math.max(DEPAN_FORMASI, x)
+end
+
+-- Stat panglima = kelas perannya, dikuatin.
+local function kelasPanglima(peran)
+	local d = C.KELAS[peran]
+	local k = C.PANGLIMA_KALI
+	return {
+		hp = math.floor(d.hp * k.hp),
+		atk = d.atk * k.atk,
+		def = d.def + k.def,
+		crit = d.crit + k.crit,
+		jangkau = d.jangkau,
+		kecepatan = 10,
+		panah = d.panah,
+	}
 end
 
 Players.RespawnTime = 5
@@ -274,11 +292,14 @@ local function lukaiPasukan(army, u, dmg, crit)
 		if i then
 			table.remove(army.prajurit, i)
 		end
-		if #army.prajurit == 0 and not army.lagiReset then
+		local benderaJatuh = u.kelas.bendera
+		if (benderaJatuh or #army.prajurit == 0) and not army.lagiReset then
 			army.lagiReset = true
+			local pesan = benderaJatuh and "Bendera jatuh! Pasukan mundur ke awal." or "Pasukan tumbang! Mulai lagi dari awal."
+			Remotes.Umpan:FireClient(army.player, { jenis = "pesan", teks = pesan })
 			task.delay(3, function()
 				if pasukan[army.player] == army then
-					resetPasukan(army, "Pasukan tumbang! Mulai lagi dari awal.")
+					resetPasukan(army)
 				end
 			end)
 		end
@@ -336,7 +357,7 @@ resetPasukan = function(army, pesan)
 	army.pengaliSampai = -1
 	putusKombo(army)
 	bikinPrajurit(army, C.ARENA.mulaiX)
-	setPanglimaX(army, C.ARENA.mulaiX)
+	setPanglimaX(army, C.ARENA.mulaiX + C.POSISI_PANGLIMA[army.peran])
 	taruhPanglima(army)
 	if pesan then
 		Remotes.Umpan:FireClient(army.player, { jenis = "pesan", teks = pesan })
@@ -349,12 +370,12 @@ local function pasangPanglima(army, character)
 	if not hum or not root or pasukan[army.player] ~= army then
 		return
 	end
-	hum.MaxHealth = C.KELAS.Panglima.hp
+	hum.MaxHealth = army.panglima.kelas.hp
 	hum.Health = hum.MaxHealth
-	hum.WalkSpeed = C.KELAS.Panglima.kecepatan
+	hum.WalkSpeed = army.panglima.kelas.kecepatan
 	hum.JumpPower = 0
 	hum.JumpHeight = 0
-	Bentuk.perlengkapanPanglima(character)
+	Bentuk.perlengkapanPanglima(character, army.peran)
 	army.panglima.character = character
 	army.panglima.hum = hum
 	army.panglima.root = root
@@ -406,7 +427,13 @@ local function tambahPemain(player)
 		warna = C.WARNA_PLAYER[(slot - 1) % #C.WARNA_PLAYER + 1],
 		model = model,
 		prajurit = {},
-		panglima = { panglima = true, kelas = C.KELAS.Panglima, targetX = C.ARENA.mulaiX, antri = DEPAN_FORMASI },
+		peran = C.PERAN_AWAL,
+		panglima = {
+			panglima = true,
+			kelas = kelasPanglima(C.PERAN_AWAL),
+			targetX = C.ARENA.mulaiX,
+			antri = DEPAN_FORMASI - C.POSISI_PANGLIMA[C.PERAN_AWAL],
+		},
 		kombo = 0,
 		komboMaks = 0,
 		semangat = false,
@@ -416,7 +443,8 @@ local function tambahPemain(player)
 		pengaliSampai = -1,
 	}
 	pasukan[player] = army
-	setPanglimaX(army, C.ARENA.mulaiX)
+	model:SetAttribute("Peran", army.peran)
+	setPanglimaX(army, C.ARENA.mulaiX + C.POSISI_PANGLIMA[army.peran])
 	bikinPrajurit(army, C.ARENA.mulaiX)
 
 	player.CharacterAdded:Connect(function(character)
@@ -439,11 +467,37 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
+-- ── PERAN PANGLIMA ─────────────────────────────────────────────────
+Remotes.Peran.OnServerEvent:Connect(function(player, peran)
+	local army = pasukan[player]
+	if not army or typeof(peran) ~= "string" or not table.find(C.PERAN_PANGLIMA, peran) then
+		return
+	end
+	local geser = C.POSISI_PANGLIMA[peran] - C.POSISI_PANGLIMA[army.peran]
+	army.peran = peran
+	army.panglima.kelas = kelasPanglima(peran)
+	army.panglima.antri = DEPAN_FORMASI - C.POSISI_PANGLIMA[peran]
+	army.model:SetAttribute("Peran", peran)
+	setPanglimaX(army, army.panglima.targetX + geser) -- pindah ke posisi peran barunya di formasi
+	local character = army.panglima.character
+	if character and character.Parent then
+		local hum = army.panglima.hum
+		local persen = hum and hum.MaxHealth > 0 and hum.Health / hum.MaxHealth or 1
+		if hum then
+			hum.MaxHealth = army.panglima.kelas.hp
+			hum.Health = hum.MaxHealth * persen
+		end
+		Bentuk.perlengkapanPanglima(character, peran)
+	end
+end)
+
 -- ── PERINTAH ───────────────────────────────────────────────────────
 local function serang(army, u, e, pengali)
 	local dmg, crit = hitung(u.kelas, e.kelas, pengali)
 	if u.panglima then
-		Remotes.Efek:FireAllClients("ayun", army.player.UserId)
+		if not u.kelas.panah then
+			Remotes.Efek:FireAllClients("ayun", army.player.UserId)
+		end
 	else
 		tandaSerang(u) -- client: animasi nusuk/bacok/manah
 	end
@@ -473,6 +527,9 @@ local function langkahAksi(army, aksi, ke)
 			if ke == 1 then
 				u.targetX = math.max(C.ARENA.mulaiX - 6, x - p.jarakMundur)
 			end
+		elseif p.id == "Serang" and u.kelas.atk <= 0 then
+			-- Pembawa bendera nggak nyerang, cuma ikut maju jaga formasi.
+			u.targetX = math.min(math.max(u.targetX, x) + langkah * 0.5, batasMaju(x) - (u.antri or 0))
 		elseif p.id == "Serang" then
 			local e, d = musuhDepan(x, 40)
 			if e then

@@ -22,5 +22,7 @@
 - Place Studio-nya **terpisah** dari Juragan Tahu. Jangan sync file `laskar/`
   ke place Juragan Tahu, dan sebaliknya.
 - Mapping file ke Studio + cara setup ada di `laskar/README.md`.
-- Jangan pake nama/istilah Patapon (Pata, Pon, Chaka, Don, nama kelas, desain
-  makhluk bermata satu): itu hak cipta Sony.
+- Jangan pake nama/istilah Patapon (Pata, Pon, Chaka, Don, nama kelas): itu hak
+  cipta Sony. Prajurit boleh bulet bermata satu (keputusan user) tapi tetep
+  versi "bakso" (coklat berbintil, alis, mulut), jangan siluet hitam polos.
+- Status & sisa kerjaan Laskar: lihat bagian "Lanjutan kerja" di `laskar/README.md`.

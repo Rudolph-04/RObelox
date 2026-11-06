@@ -7,10 +7,11 @@ pasukan kecil bertopeng. Lu sendiri nggak keliatan: kayak "dewa" yang mukul
 perintah buat pasukan. Kendangnya cuma muncul di layar (pinggir layar
 ngedenyut tiap ketukan, ikon kendang nongol tiap dipukul).
 
-Desain prajurit sengaja **bukan tiruan Patapon** (makhluk hitam bermata satu
-itu hak cipta Sony): badan bulet warna pasukan, topeng kayu, kaki-tangan lidi,
-topi per kelas (ikat kepala + bulu / helm / caping). Musuh: topeng hitam mata
-merah, bertanduk. Semua unit loncat kecil tiap ketukan, loncat + angkat tangan
+Desain prajurit: "bakso" bulet bermata satu (keputusan user). Sengaja coklat
+berbintil + alis + mulut + selempang warna pasukan, **bukan** siluet hitam polos
+kayak Patapon (itu hak cipta Sony, makin mirip makin rawan takedown). Topi per
+kelas (helm / ikat kepala / ikat kepala + bulu / caping / peci). Musuh: bakso
+gosong bertanduk. Semua unit loncat kecil tiap ketukan, loncat + angkat tangan
 pas jawab perintah, jongkok pas TAHAN.
 
 Tujuan prototipe ini cuma satu: **ngetes mukul kendang di Roblox kerasa enak
@@ -109,6 +110,27 @@ Cara pasang:
 2. Copy ID-nya ke `LaskarConfig.SUARA`, formatnya `"rbxassetid://123456"`.
 3. Tanpa suara game tetep jalan, tapi ritmenya susah dirasain. Minimal upload
    4 kendang + MUSIK.
+
+## Lanjutan kerja (catatan buat sesi berikutnya)
+
+Udah (belum dites di Studio):
+- Formasi 5 prajurit: Perisai (tameng + golok) paling depan, Pedang, Tombak,
+  Bendera, Panah paling belakang. Pembawa bendera nggak nyerang; kalau gugur,
+  pasukan balik ke awal.
+- Panglima (avatar) punya peran: Perisai / Pedang / Tombak / Panah. Stat =
+  kelas itu x `PANGLIMA_KALI`, senjata di tangan avatar ngikutin peran, posisi
+  di formasi ngikutin `POSISI_PANGLIMA`. Server udah nerima `Remotes.Peran`.
+- Tampilan prajurit: bakso bulet bermata satu (coklat berbintil, alis, mulut,
+  selempang warna pasukan), musuh bakso gosong bertanduk. Animasi nunggu
+  (celingak-celinguk, ketuk kaki), mulut kebuka pas jawab perintah, bendera
+  berkibar, celetukan "Nunggu apa nih?" tiap ~10 detik kalau nggak ada perintah.
+
+Belum:
+- **UI pilih peran** (layar pilih 4 peran pas masuk + tombol "Ganti peran" di
+  panel bantuan) di `LaskarUI` + kirim `Remotes.Peran:FireServer(peran)` dari
+  `LaskarClient`. Sekarang peran selalu `C.PERAN_AWAL` (Pedang).
+- Upload 8 file suara & isi `LaskarConfig.SUARA` (musik belum bunyi karena ini).
+- Tes Studio semua perubahan di atas.
 
 ## Belum ada (rencana v0.2)
 

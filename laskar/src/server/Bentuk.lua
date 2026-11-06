@@ -4,7 +4,7 @@
 --                          keliatan + bar HP + atribut Jenis/Warna/Musuh. Badan &
 --                          animasinya dibikin client (LaskarPrajurit).
 --   benteng()              benteng kayu di ujung stage (statis)
---   perlengkapanPanglima() golok di tangan kanan avatar player
+--   perlengkapanPanglima() senjata avatar player sesuai peran panglima
 --
 -- Tanpa tulisan, tanpa merek, tanpa desain karakter Patapon.
 
@@ -123,8 +123,9 @@ function Bentuk.benteng()
 	return m, akar, isi
 end
 
--- Golok di tangan kanan avatar player. Diganti tiap respawn.
-function Bentuk.perlengkapanPanglima(character)
+-- Senjata avatar player sesuai peran panglima (Perisai: tameng + golok,
+-- Pedang, Tombak, Panah: busur + wadah panah). Diganti tiap respawn / ganti peran.
+function Bentuk.perlengkapanPanglima(character, peran)
 	local lama = character:FindFirstChild("PerlengkapanPanglima")
 	if lama then
 		lama:Destroy()
@@ -140,12 +141,59 @@ function Bentuk.perlengkapanPanglima(character)
 		w.C0 = c0
 		w.Parent = p
 	end
+	-- Balok dari titik a ke b (di ruang lokal tangan).
+	local function ruas(induk, nama, a, b, tebal, warna, material)
+		local atas = math.abs((b - a).Unit.Y) > 0.99 and Vector3.zAxis or Vector3.yAxis
+		tempel(induk, part(m, nama, V3(tebal, tebal, (b - a).Magnitude), CFrame.new(), warna, material), CFrame.lookAt((a + b) / 2, b, atas))
+	end
 
-	local tangan = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
-	if tangan then
-		local y = tangan.Name == "Right Arm" and -0.9 or -0.1
-		tempel(tangan, part(m, "GagangGolok", V3(0.16, 0.16, 0.5), CFrame.new(), KAYU_GELAP, M.Wood), CFrame.new(0, y, -0.15))
-		tempel(tangan, part(m, "BilahGolok", V3(0.06, 0.26, 2.0), CFrame.new(), BESI, M.Metal), CFrame.new(0, y, -1.4))
+	local kanan = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	local kiri = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+	local punggung = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local function yTangan(t)
+		return (t.Name == "Right Arm" or t.Name == "Left Arm") and -0.9 or -0.1
+	end
+
+	if peran == "Perisai" then
+		if kanan then
+			local y = yTangan(kanan)
+			tempel(kanan, part(m, "GagangGolok", V3(0.16, 0.16, 0.5), CFrame.new(), KAYU_GELAP, M.Wood), CFrame.new(0, y, -0.15))
+			tempel(kanan, part(m, "BilahGolok", V3(0.06, 0.26, 2.0), CFrame.new(), BESI, M.Metal), CFrame.new(0, y, -1.4))
+		end
+		if kiri then
+			local y = yTangan(kiri)
+			tempel(kiri, silinder(m, "Tameng", 0.16, 2.1, CFrame.new(), KAYU, M.WoodPlanks), CFrame.new(0, y, -0.35) * CFrame.Angles(0, math.rad(90), 0))
+			tempel(kiri, bola(m, "PakuTameng", 0.4, V3(), BESI, M.Metal), CFrame.new(0, y, -0.45))
+		end
+	elseif peran == "Tombak" then
+		if kanan then
+			local y = yTangan(kanan)
+			tempel(kanan, part(m, "GagangTombak", V3(0.14, 0.14, 5.5), CFrame.new(), KAYU, M.Wood), CFrame.new(0, y, -1.8))
+			tempel(kanan, part(m, "MataTombak", V3(0.08, 0.36, 0.8), CFrame.new(), BESI, M.Metal), CFrame.new(0, y, -4.9))
+		end
+	elseif peran == "Panah" then
+		if kiri then
+			local y = yTangan(kiri)
+			local titik = {}
+			for _, derajat in ipairs({ -70, -35, 0, 35, 70 }) do
+				local a = math.rad(derajat)
+				table.insert(titik, V3(0, y + 1.6 * math.sin(a), -0.55 * math.cos(a) + 0.1))
+			end
+			for i = 1, #titik - 1 do
+				ruas(kiri, "Busur", titik[i], titik[i + 1], 0.12, KAYU_GELAP, M.Wood)
+			end
+			ruas(kiri, "TaliBusur", titik[1], titik[#titik], 0.03, RGB(235, 230, 215))
+		end
+		if punggung then
+			tempel(punggung, silinder(m, "WadahPanah", 1.6, 0.45, CFrame.new(), RGB(120, 80, 50), M.Fabric), CFrame.new(0.35, 0.2, punggung.Size.Z / 2 + 0.25) * CFrame.Angles(math.rad(-15), 0, 0) * TEGAK)
+		end
+	else -- Pedang
+		if kanan then
+			local y = yTangan(kanan)
+			tempel(kanan, part(m, "GagangPedang", V3(0.16, 0.16, 0.5), CFrame.new(), KAYU_GELAP, M.Wood), CFrame.new(0, y, -0.05))
+			tempel(kanan, part(m, "PelindungPedang", V3(0.7, 0.12, 0.14), CFrame.new(), RGB(200, 170, 80), M.Metal), CFrame.new(0, y, -0.32))
+			tempel(kanan, part(m, "BilahPedang", V3(0.08, 0.3, 2.8), CFrame.new(), BESI, M.Metal), CFrame.new(0, y, -1.8))
+		end
 	end
 
 	m.Parent = character

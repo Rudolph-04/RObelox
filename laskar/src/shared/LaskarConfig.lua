@@ -105,7 +105,8 @@ C.JEDA_ULANG_STAGE = 10 -- detik abis menang sebelum stage diulang
 C.KAMERA = { jarak = 34, tinggi = 8, lihatDepan = 7, fov = 50 }
 
 -- ── SUARA ──────────────────────────────────────────────────────────
--- Isi "rbxassetid://<id>" setelah upload file di laskar/assets/suara/.
+-- Isi "rbxassetid://<id>" setelah upload. File kendang & TIK ada di
+-- laskar/assets/suara/, musik di laskar/assets/musik/.
 -- Kosong = nggak bunyi (game tetep jalan, ketukan cuma keliatan di layar).
 C.SUARA = {
 	DUNG = "",
@@ -113,9 +114,13 @@ C.SUARA = {
 	PAK = "",
 	TUNG = "",
 	TIK = "", -- metronom (dipake kalau MUSIK kosong)
-	MUSIK = "", -- loop musik latar
+	MUSIK = "", -- loop musik stage
+	MUSIK_SEMANGAT = "", -- loop yang sama + suling & taiko, gantian pas SEMANGAT
+	MENANG = "", -- sekali main pas benteng ancur
 }
-C.MUSIK_KETUKAN = 16 -- panjang loop musik dalam ketukan (harus pas sama file)
+C.MUSIK_KETUKAN = 32 -- panjang loop musik dalam ketukan (harus pas sama file: 32 = 16 detik)
+C.VOLUME_MUSIK = 0.5
+C.VOLUME_MUSIK_SEMANGAT = 0.4 -- file SEMANGAT ~5 dB lebih keras (alatnya lebih banyak)
 
 -- ── HELPER ─────────────────────────────────────────────────────────
 function C.drum(id)

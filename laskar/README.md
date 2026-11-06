@@ -62,18 +62,38 @@ Bikin place **baru**, jangan di place Juragan Tahu.
 5. Playtest **sekali**: Play, coba MAJU sama SERANG sampai ketemu musuh
    pertama. Screenshot + laporin semua error/warning di Output.
 
-## Suara
+## Suara & musik
 
-File ada di `laskar/assets/suara/` (dibikin `laskar/assets/bikin_suara.py`,
-sintesis sendiri, bebas hak cipta). Tanpa suara game tetep jalan, ketukan cuma
-keliatan dari kedipan kotak slot, dan itu bikin susah ngerasain ritmenya.
+Semua dibikin sendiri, bebas hak cipta:
 
-1. Studio: View > Asset Manager > Import (atau Creator Dashboard > Audio),
-   upload `DUNG.wav`, `TAK.wav`, `PAK.wav`, `TUNG.wav`, `TIK.wav`, `MUSIK.wav`.
-   Upload audio butuh akun lu sendiri (ada batas jumlah upload per bulan).
-2. Copy ID tiap file ke `LaskarConfig.SUARA`, formatnya `"rbxassetid://123456"`.
-3. `MUSIK.wav` = loop 16 ketukan (8 detik). Kalau MUSIK diisi, metronom TIK
-   nggak dipake.
+| File | Isi | Dibikin oleh |
+|---|---|---|
+| `assets/suara/DUNG/TAK/PAK/TUNG.wav` | bunyi 4 kendang pas lu mukul | `assets/bikin_suara.py` (sintesis) |
+| `assets/suara/TIK.wav` | metronom (cuma dipake kalau MUSIK kosong) | `assets/bikin_suara.py` |
+| `assets/musik/MUSIK.wav` | loop stage, 32 ketukan = 16 detik | `assets/musik/bikin_musik.py` |
+| `assets/musik/MUSIK_SEMANGAT.wav` | loop yang sama + suling, taiko, kocokan | `assets/musik/bikin_musik.py` |
+| `assets/musik/MENANG.wav` | 6.5 detik pas benteng ancur | `assets/musik/bikin_musik.py` |
+
+Musik ditulis sebagai MIDI (`assets/musik/*.mid`, bisa dibuka di BandLab/LMMS
+buat ganti alat musik) terus dirender pakai soundfont FluidR3_GM (Frank Wen,
+lisensi MIT). Nuansanya pentatonis ala gamelan, tapi alatnya marimba, kalimba,
+conga, taiko, suling pan (General MIDI nggak punya gamelan asli).
+
+`bikin_musik.py` ngetes sendiri dan baru nyimpen kalau semua lolos:
+ketukan rata-rata geser 0.09 ms dari jam game (maks 0.9 ms), tempo pas
+0.5 detik/ketukan, sambungan loop nggak klik, MUSIK & MUSIK_SEMANGAT sejajar
+0 sampel. Yang **nggak** bisa dites program: enak didenger atau nggak.
+
+Di game: MUSIK & MUSIK_SEMANGAT jalan barengan dan disinkronin ke jam ketukan
+tiap detik; pas SEMANGAT nyala/mati, volumenya gantian (fade 0.4 detik).
+Pas menang, loop diredam & MENANG diputer.
+
+Cara pasang:
+1. Upload 8 file di atas (Studio: View > Asset Manager > Import, atau Creator
+   Dashboard > Audio). Upload audio butuh akun lu sendiri, ada batas per bulan.
+2. Copy ID-nya ke `LaskarConfig.SUARA`, formatnya `"rbxassetid://123456"`.
+3. Tanpa suara game tetep jalan, tapi ritmenya susah dirasain. Minimal upload
+   4 kendang + MUSIK.
 
 ## Belum ada (rencana v0.2)
 

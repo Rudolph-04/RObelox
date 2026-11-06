@@ -1,8 +1,8 @@
 """Bikin file suara prototipe Laskar Kendang (sintesis, tanpa sampel orang lain).
 
 Jalanin:  python3 laskar/assets/bikin_suara.py
-Hasil di laskar/assets/suara/: DUNG/TAK/PAK/TUNG (kendang), TIK (metronom),
-MUSIK (loop 16 ketukan @120 BPM = 8 detik, pas sama LaskarConfig.MUSIK_KETUKAN).
+Hasil di laskar/assets/suara/: DUNG/TAK/PAK/TUNG (kendang), TIK (metronom).
+Musik latar dibikin terpisah: laskar/assets/musik/bikin_musik.py.
 Upload ke Roblox, terus isi ID-nya di LaskarConfig.SUARA.
 
 Cuma pake library bawaan Python (wave, math, random), nggak perlu numpy.
@@ -22,20 +22,8 @@ FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "suara")
 acak = random.Random(42)  # seed tetap: hasil selalu sama
 
 
-def kosong(detik):
-    return [0.0] * int(detik * RATE)
 
 
-def tambah(buf, sampel, mulai_detik=0.0, gain=1.0, lipat=False):
-    """lipat=True: bagian yang lewat ujung buffer diterusin dari depan (buat loop)."""
-    awal = int(mulai_detik * RATE)
-    for i, v in enumerate(sampel):
-        j = awal + i
-        if j >= len(buf):
-            if not lipat:
-                break
-            j %= len(buf)
-        buf[j] += v * gain
 
 
 def nada_turun(f0, f1, tau, detik, harmonik=()):
@@ -93,44 +81,10 @@ def tik():
     return nada_turun(2100, 2000, 0.012, 0.06)
 
 
-def gong():
-    """Gong rendah: dua sinus deket biar ada efek ngombak."""
-    out = []
-    for i in range(int(3.0 * RATE)):
-        t = i / RATE
-        v = math.sin(2 * math.pi * 82 * t) + 0.6 * math.sin(2 * math.pi * 84.5 * t) + 0.25 * math.sin(2 * math.pi * 164 * t)
-        serang = min(1.0, t / 0.02)
-        out.append(v * serang * math.exp(-t / 1.1))
-    return out
 
 
-def petik(f, tau=0.35, detik=0.6):
-    """Bilah logam ala bonang (sinus + harmonik tinggi)."""
-    out = []
-    for i in range(int(detik * RATE)):
-        t = i / RATE
-        v = math.sin(2 * math.pi * f * t) + 0.35 * math.sin(2 * math.pi * f * 2.76 * t) * math.exp(-t / 0.08)
-        out.append(v * math.exp(-t / tau))
-    return out
 
 
-def musik():
-    """Loop 16 ketukan: gong tiap 8 ketukan, kendang rendah tiap ketukan,
-    desis di sela ketukan, petikan pentatonis pelan."""
-    panjang = 16 * KETUKAN
-    buf = kosong(panjang)
-    # Pentatonis ala slendro (perkiraan, bukan laras asli).
-    nada = [293.7, 336.0, 386.0, 443.0, 509.0]
-    pola = [0, 2, 1, 3, 2, 4, 3, 1, 0, 2, 4, 3, 2, 1, 0, 2]
-    # lipat=True: ekor yang lewat ujung loop diterusin dari depan biar sambungannya mulus.
-    for n in range(16):
-        t = n * KETUKAN
-        if n % 8 == 0:
-            tambah(buf, gong(), t, 0.5, lipat=True)
-        tambah(buf, nada_turun(110, 55, 0.18, 0.4), t, 0.55 if n % 2 == 0 else 0.4, lipat=True)
-        tambah(buf, desis(0.02, 0.1, 1), t + KETUKAN / 2, 0.12, lipat=True)
-        tambah(buf, petik(nada[pola[n]]), t, 0.12, lipat=True)
-    return buf
 
 
 def tulis(nama, sampel, puncak=0.85):
@@ -152,4 +106,3 @@ if __name__ == "__main__":
     tulis("PAK", pak())
     tulis("TUNG", tung())
     tulis("TIK", tik(), 0.5)
-    tulis("MUSIK", musik(), 0.8)

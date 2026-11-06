@@ -18,6 +18,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local C = require(ReplicatedStorage:WaitForChild("LaskarConfig"))
@@ -68,9 +69,30 @@ for _, d in ipairs(C.DRUM) do
 	suaraDrum[d.id] = bikinSuara(C.SUARA[d.id], 0.9)
 end
 local suaraTik = bikinSuara(C.SUARA.TIK, 0.3)
-local musik = bikinSuara(C.SUARA.MUSIK, 0.45)
-if musik then
-	musik.Looped = true
+local suaraMenang = bikinSuara(C.SUARA.MENANG, 0.6)
+-- Dua loop jalan barengan & sinkron terus, yang kedengeran diatur lewat volume.
+local musik = bikinSuara(C.SUARA.MUSIK, C.VOLUME_MUSIK)
+local musikSemangat = bikinSuara(C.SUARA.MUSIK_SEMANGAT, 0)
+local daftarMusik = {}
+for _, s in ipairs({ musik, musikSemangat }) do
+	if s then
+		s.Looped = true
+		table.insert(daftarMusik, s)
+	end
+end
+local semangatAktif = false
+local lagiMenang = false
+
+local function aturVolumeMusik(detik)
+	local redam = lagiMenang and 0.2 or 1
+	local pakaiSemangat = semangatAktif and musikSemangat ~= nil
+	local info = TweenInfo.new(detik or 0.4)
+	if musik then
+		TweenService:Create(musik, info, { Volume = (pakaiSemangat and 0 or C.VOLUME_MUSIK) * redam }):Play()
+	end
+	if musikSemangat then
+		TweenService:Create(musikSemangat, info, { Volume = (pakaiSemangat and C.VOLUME_MUSIK_SEMANGAT or 0) * redam }):Play()
+	end
 end
 
 local function bunyi(s)
@@ -80,18 +102,21 @@ local function bunyi(s)
 	end
 end
 
--- Musik latar dijaga pas sama jam ketukan (dicek tiap detik).
+-- Musik dijaga pas sama jam ketukan (dicek tiap detik). Ketukan ke-0 loop =
+-- ketukan global kelipatan MUSIK_KETUKAN, jadi semua player denger bagian yang sama.
 task.spawn(function()
 	local panjang = C.MUSIK_KETUKAN * K
-	while musik do
-		if musik.IsLoaded then
-			local seharusnya = (workspace:GetServerTimeNow() - MULAI) % panjang
-			local beda = math.abs(musik.TimePosition - seharusnya)
-			if not musik.IsPlaying then
-				musik.TimePosition = seharusnya
-				musik:Play()
-			elseif beda > 0.06 and beda < panjang - 0.06 then
-				musik.TimePosition = seharusnya
+	while #daftarMusik > 0 do
+		for _, s in ipairs(daftarMusik) do
+			if s.IsLoaded then
+				local seharusnya = (workspace:GetServerTimeNow() - MULAI) % panjang
+				local beda = math.abs(s.TimePosition - seharusnya)
+				if not s.IsPlaying then
+					s.TimePosition = seharusnya
+					s:Play()
+				elseif beda > 0.03 and beda < panjang - 0.03 then
+					s.TimePosition = seharusnya
+				end
 			end
 		end
 		task.wait(1)
@@ -325,9 +350,22 @@ Remotes.Umpan.OnClientEvent:Connect(function(info)
 	if info.jenis == "kombo" then
 		kombo = info.kombo
 		ui.kombo(info.kombo, info.semangat)
+		if info.semangat ~= semangatAktif then
+			semangatAktif = info.semangat
+			aturVolumeMusik()
+		end
 	elseif info.jenis == "menang" then
 		local detik = math.floor(info.waktu)
 		ui.banner("MENANG!", ("Waktu %d:%02d  ·  Kombo tertinggi %d"):format(detik // 60, detik % 60, info.komboMaks), C.JEDA_ULANG_STAGE - 1)
+		if suaraMenang then
+			bunyi(suaraMenang)
+			lagiMenang = true -- musik loop diredam selama musik menang
+			aturVolumeMusik(0.3)
+			task.delay(suaraMenang.TimeLength > 0 and suaraMenang.TimeLength or 6.5, function()
+				lagiMenang = false
+				aturVolumeMusik(1)
+			end)
+		end
 	elseif info.jenis == "pesan" then
 		ui.pesan(info.teks, 4)
 	end

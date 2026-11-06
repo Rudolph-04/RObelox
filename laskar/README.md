@@ -7,7 +7,9 @@ ketukan, dan susunan pukulan jadi perintah buat pasukan kecil lu.
 Tujuan prototipe ini cuma satu: **ngetes mukul kendang di Roblox kerasa enak
 atau nggak.** Belum ada level/stat tree/loot.
 
-Status: kode udah lolos compile Luau, **belum pernah dites di Studio**.
+Status (2026-11-07): udah kepasang & dites di Studio. Stage kebangun, MAJU
+berhenti pas di depan musuh, SERANG ngebunuh musuh, kombo naik 1-2-3-4.
+Belum dites: rasa mukul pake tangan (butuh suara diupload dulu).
 
 ## Cara main
 
@@ -106,8 +108,13 @@ Cara pasang:
 
 ## Risiko yang udah ketauan
 
-- Belum dites. Asumsi yang belum kebukti: prajurit digerakin lewat
-  `Akar.CFrame` (part lain ikut lewat WeldConstraint), dan `Motor6D.Transform`
-  yang diset di `RunService.Stepped` beneran nimpa animasi bawaan.
+- Udah kebukti: prajurit gerak lewat `Akar.CFrame` (part lain ikut lewat
+  WeldConstraint). Belum dicek mata: `Motor6D.Transform` di `RunService.Stepped`
+  beneran nimpa animasi bawaan (gerak tangan pas mukul).
+- Kontrol jalan dimatiin lewat `DevComputerMovementMode = Scriptable` di
+  server. `PlayerModule` sekarang ada di `StarterPlayer`, bukan
+  `PlayerScripts`, jadi `GetControls():Disable()` nggak bisa dipake lagi.
+- Error `rbxassetid://203785492 ... Asset type does not match` di Output
+  bukan dari game ini (nggak ada di place/repo), aman diabaikan.
 - Timing dinilai di client. Buat PvE aman, buat PvP nanti harus dipikir ulang.
 - Avatar R6 nggak dapet animasi tangan.

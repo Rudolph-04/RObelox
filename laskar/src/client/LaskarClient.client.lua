@@ -9,7 +9,7 @@
 --      = KACAU (kombo putus). Perintah berikutnya harus mulai pas di ketukan
 --      sesudahnya biar kombo nyambung.
 --   3. Kamera samping, avatar (panglima) jalan sendiri ngikutin pasukan
---      (kontrol jalan dimatiin), suara kendang/metronom/musik, UI, efek.
+--      (kontrol jalan dimatiin server), suara kendang/metronom/musik, UI, efek.
 --
 -- Tombol: D F J K = kendang, H = daftar perintah, C = ganti kamera,
 -- [ ] = kalibrasi (kalau pukulan selalu kerasa telat/kecepetan).
@@ -39,20 +39,6 @@ while not MULAI do
 	ReplicatedStorage:GetAttributeChangedSignal("MulaiKetukan"):Wait()
 	MULAI = ReplicatedStorage:GetAttribute("MulaiKetukan")
 end
-
--- ── KONTROL JALAN DIMATIIN (panglima gerak ngikutin perintah) ──────
-local function matiinKontrol()
-	local ok, PlayerModule = pcall(function()
-		return require(pemain:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
-	end)
-	if ok and PlayerModule then
-		PlayerModule:GetControls():Disable()
-	end
-end
-task.spawn(matiinKontrol)
-pemain.CharacterAdded:Connect(function()
-	task.defer(matiinKontrol)
-end)
 
 -- ── SUARA ──────────────────────────────────────────────────────────
 local function bikinSuara(id, volume)

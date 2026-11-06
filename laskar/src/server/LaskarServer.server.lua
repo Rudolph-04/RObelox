@@ -401,6 +401,11 @@ local function laneZ(slot)
 end
 
 local function tambahPemain(player)
+	-- Kontrol jalan bawaan mati: panglima cuma gerak ngikutin perintah (D juga
+	-- tombol kendang, jangan sampe ikut jalan ke kanan). PlayerModule udah nggak
+	-- di PlayerScripts lagi, jadi dimatiin lewat sini, bukan GetControls():Disable().
+	player.DevComputerMovementMode = Enum.DevComputerMovementMode.Scriptable
+	player.DevTouchMovementMode = Enum.DevTouchMovementMode.Scriptable
 	local slot = slotKosong()
 	local model = Instance.new("Model")
 	model.Name = "Pasukan_" .. player.UserId
